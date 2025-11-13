@@ -16,7 +16,7 @@ class Customer(db.Model):
     account_number = db.Column(db.String, nullable = False)
     location = db.Column(db.String, nullable = False)
     pin_code = db.Column(db.String, nullable = False)
-    status = db.Column(db.String, default = 'Active') # Active , Flagged ,  Blocked
+    status = db.Column(db.String, default = 'Pending') # Pending, Active , Flagged ,  Blocked
     doc_name = db.Column(db.String, nullable = False) ## TO BE UPDATED
     doc_data = db.Column(db.LargeBinary, nullable = False)
     

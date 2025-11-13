@@ -39,8 +39,9 @@ def user_home():
         "roles": roles_list(user.roles)
     })
 
+# customer registration
 
-@app.route('/api/register', methods = ['POST'])
+@app.route('/api/customer/register', methods = ['POST'])
 # or we can write - @app.post('/api/register')
 def register():
     credentials = request.get_json()
@@ -49,12 +50,18 @@ def register():
         # if not dob_str:
         #     return jsonify({"error": "Date of Birth is required"}), 400  # Handle missing input
         dob_date = datetime.strptime(credentials["dob"], "%Y-%m-%d").date()
+        count = Customer.query.count()
         app.security.datastore.create_user(email = credentials["email"],
                                            name = credentials["name"],
                                            password = generate_password_hash(credentials["password"]),
                                            roles = ['user'],
                                            dob = dob_date,
-                                           qualification = credentials["qualification"])
+                                           contact_number = credentials["contact_number"],
+                                           signup_date = datetime.strptime(datetime.datetime(), "%Y-%m-%d").date(),
+                                           account_number = 1000+count+1,
+                                           location = credentials["location"],
+                                           pincode = credentials["pincode"])
+
         db.session.commit()
         return jsonify({
             "message": "User created successfully"
@@ -65,6 +72,63 @@ def register():
     }), 400
 
 
+# manager registration
+
+@app.route('/api/employee/register', methods = ['POST'])
+# or we can write - @app.post('/api/register')
+def register():
+    credentials = request.get_json()
+    if not app.security.datastore.find_employee(email = credentials["email"]):
+        # dob_str = credentials.get("dob", "").strip()
+        # if not dob_str:
+        #     return jsonify({"error": "Date of Birth is required"}), 400  # Handle missing input
+        dob_date = datetime.strptime(credentials["dob"], "%Y-%m-%d").date()
+        
+        app.security.datastore.create_employee(email = credentials["email"],
+                                           name = credentials["name"],
+                                           password = generate_password_hash(credentials["password"]),
+                                           roles = ['employee'],
+                                           contact_number = credentials["contact_number"],
+                                           signup_date = datetime.strptime(datetime.datetime(), "%Y-%m-%d").date()
+                                           manager_id = credentials["manager_id"])
+
+        db.session.commit()
+        return jsonify({
+            "message": "User created successfully"
+        }), 201
+    
+    return jsonify({
+        "message": "User already exits!"
+    }), 400
+
+
+# manager registration
+
+@app.route('/api/manager/register', methods = ['POST'])
+# or we can write - @app.post('/api/register')
+def register():
+    credentials = request.get_json()
+    if not app.security.datastore.find_manager(email = credentials["email"]):
+        # dob_str = credentials.get("dob", "").strip()
+        # if not dob_str:
+        #     return jsonify({"error": "Date of Birth is required"}), 400  # Handle missing input
+        dob_date = datetime.strptime(credentials["dob"], "%Y-%m-%d").date()
+        
+        app.security.datastore.create_manager(email = credentials["email"],
+                                           name = credentials["name"],
+                                           password = generate_password_hash(credentials["password"]),
+                                           roles = ['manager'],
+                                           contact_number = credentials["contact_number"],
+                                           signup_date = datetime.strptime(datetime.datetime(), "%Y-%m-%d").date())
+
+        db.session.commit()
+        return jsonify({
+            "message": "User created successfully"
+        }), 201
+    
+    return jsonify({
+        "message": "User already exits!"
+    }), 400
 
 # @app.route('/api/mail')
 # def send_reports():
