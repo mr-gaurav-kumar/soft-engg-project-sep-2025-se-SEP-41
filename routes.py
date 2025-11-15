@@ -72,7 +72,7 @@ def register():
     }), 400
 
 
-# manager registration
+# employee registration
 
 @app.route('/api/employee/register', methods = ['POST'])
 # or we can write - @app.post('/api/register')
@@ -129,10 +129,3 @@ def register():
     return jsonify({
         "message": "User already exits!"
     }), 400
-
-# @app.route('/api/mail')
-# def send_reports():
-#     res = monthly_report.delay()
-#     return {
-#         "result": res.result
-#     }

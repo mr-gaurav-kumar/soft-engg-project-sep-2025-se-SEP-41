@@ -10,12 +10,12 @@ api = Api()
 
 cache = app.cache
 
-
-# Employee - verify_doc - accept/ reject, update_task
+# customer - create issue, get issues details
+# Employee - update_task (pending -> complete), update issue
 # Manager - create_task, task_details, performance_details
 
 task_parser = reqparse.RequestParser()
-task_parser.add_argument('id')
+task_parser.add_argument('id')  
 task_parser.add_argument('employee_id')
 task_parser.add_argument('customer_id')
 task_parser.add_argument('due_date')
@@ -52,8 +52,8 @@ class TaskApi(Resource):
 
     @auth_required('token')
     @roles_accepted('admin', 'manager')
-    def get(self): # get for subjects is simply retreival operation, there is no request body
-        # based on who is the user - normal user or admin, we want to get all subjects or only few, we need to modify for that
+    def get(self): 
+        
         tasks = [] # stores list of objects of class Subject
         task_jsons = []
         tasks = Task.query.all()
@@ -74,101 +74,98 @@ class TaskApi(Resource):
             return {
                 "message": "No tasks found"
             }, 404
-
-api.add_resource(TaskApi, '/api/task/get', '/api/task/create')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#### SUBJECT end points ####
-sub_parser = reqparse.RequestParser()
-sub_parser.add_argument('name')
-sub_parser.add_argument('description')
-
-class SubApi(Resource):
-# in routes, we can give anything as function name under the route, but here we need to give defined names
-    @auth_required('token')
-    @roles_accepted('admin', 'user')
-    @cache.cached(timeout = 3, key_prefix = "subjects")
-    def get(self): # get for subjects is simply retreival operation, there is no request body
-        # based on who is the user - normal user or admin, we want to get all subjects or only few, we need to modify for that
-        subjects = [] # stores list of objects of class Subject
-        sub_jsons = []
-        subjects = Subject.query.all()
-        # convering every object of class Subject into a disctionary
-        for sub in subjects:
-            this_sub = {}
-            this_sub["id"] = sub.id
-            this_sub["name"] = sub.name
-            this_sub["description"] = sub.description
-            sub_jsons.append(this_sub)
-        if sub_jsons:
-            return sub_jsons
-        else:
-            return {
-                "message": "No subjects found"
-            }, 404
     
     @auth_required('token')
-    @roles_required('admin')
-    def post(self):
-        try:
+    @roles_required('employee')
+    def put(self, task_id):
+        task = Task.query.filter(Task.id == task_id).first()
+        if task:
             args = sub_parser.parse_args()
-            sub = Subject(name = args["name"],
-                        description = args["description"])
-            db.session.add(sub)
+            task.status = "complete"
             db.session.commit()
             return {
-                "message": "Subject created successfully"
+                "message": "The task status updated successfully"
+            }
+
+        else:
+            return {
+                "message": "The task does not exist"
+            }, 404
+        
+
+api.add_resource(TaskApi, '/api/task/get', '/api/task/create', '/api/task/update/<int:task_id>')
+
+# Perfomance metrics in front end
+
+
+issue_parser = reqparse.RequestParser()
+issue_parser.add_argument('id')  
+issue_parser.add_argument('customer_id')
+issue_parser.add_argument('due_date')
+
+class IssueApi(Resource):
+    @auth_required('token')
+    @roles_accepted('customer')
+    def post(self):
+        try:
+            args = issue_parser.parse_args()
+            assigned_date = datetime.strptime(args["due_date"], "%Y-%m-%d").date()
+            # customer_id = Customer.query.filter(Subject.id == sub_id).first()
+            issue = Issue(title = args["name"],
+                        customer_id = args["customer_id"],
+                        assigned_date = datetime.strptime(datetime.datetime(), "%Y-%m-%d").date(),
+                        status = "Pending"
+                        description = args["description"])
+            db.session.add(issue)
+            db.session.commit()
+            return {
+                "message": "Issue created successfully"
             }
         
         except:
             return {
-                "message": "All fields are not provided or the subject provided already exists"
+                "message": "All fields are not provided or the issue provided already exists"
             }, 400
-
-    @auth_required('token')
-    @roles_required('admin')
-    def put(self, sub_id):
-        sub_exists = Subject.query.filter(Subject.id == sub_id).first()
-        if sub_exists:
-            args = sub_parser.parse_args()
-            sub_exists.name = args["name"]
-            sub_exists.description = args["description"]
-            db.session.commit()
-            return {
-                "message": "The subject updated successfully"
-            }
-
-        else:
-            return {
-                "message": "The subject does not exist"
-            }, 404
         
+
     @auth_required('token')
-    @roles_required('admin')
-    def delete(self, sub_id):
-        sub_exists = Subject.query.filter(Subject.id == sub_id).first()
-        if sub_exists:
-            db.session.delete(sub_exists)
+    @roles_accepted('admin', 'manager')
+    def get(self): 
+        issues = [] # stores list of objects of class Subject
+        issue_jsons = []
+        issues = Issue.query.all()
+        # convering every object of class Subject into a disctionary
+        for issue in issues:
+            this_issue = {}
+            this_issue["title"] = issue.title
+            this_issue["category"] = issue.cataegory
+            this_issue["status"] = issue.status
+            this_issue["due_date"] = issue.due_date
+
+            issue_jsons.append(this_issue)
+        if issue_jsons:
+            return issue_jsons
+        else:
+            return {
+                "message": "No issues found"
+            }, 404
+    
+    @auth_required('token')
+    @roles_required('employee')
+    def put(self, issue_id):
+        issue = Issue.query.filter(Issue.id == issue_id).first()
+        if issue:
+            args = sub_parser.parse_args()
+            issue.status = "complete"
             db.session.commit()
             return {
-                "message": "The subject deleted successfully"
+                "message": "The issue status updated successfully"
             }
 
         else:
             return {
-                "message": "The subject does not exist"
+                "message": "The issue does not exist"
             }, 404
 
-api.add_resource(SubApi, '/api/subject/get', '/api/subject/create', '/api/subject/update/<int:sub_id>', '/api/subject/delete/<int:sub_id>')
+
+api.add_resource(IssueApi, '/api/issue/get', '/api/issue/create', '/api/issue/update/<int:issue_id>')
