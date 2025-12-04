@@ -63,7 +63,8 @@ class TaskApi(Resource):
             this_task["priority"] = task.priority
             this_task["customer"] = task.customer.name
             this_task["employee"] = task.bank_employee.name
-            this_task["due_date"] = task.due_date.isoformat() 
+            this_task["due_date"] = task.due_date.isoformat()
+            this_task["status"] = task.status
 
             task_jsons.append(this_task)
         if task_jsons:
@@ -95,7 +96,9 @@ class TaskApi(Resource):
 
 api.add_resource(TaskApi, '/api/task/get', '/api/task/create', '/api/task/update/<int:task_id>')
 
-# Perfomance metrics in front end
+
+
+
 
 
 issue_parser = reqparse.RequestParser()
