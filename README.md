@@ -12,7 +12,7 @@ Before you begin, ensure you have the following installed on your system:
 
 ---
 
-## 🚀 Installation & Setup
+## Installation & Setup
 
 These instructions apply to **macOS**, **Linux**, and **Windows (via WSL)**.
 
@@ -69,7 +69,7 @@ npm install
 
 ---
 
-## ▶️ Running the Application
+## Running the Application
 
 You will need two running terminal processes: one for the backend and one for the frontend.
 
