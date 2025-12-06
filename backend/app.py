@@ -13,16 +13,18 @@ from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 import os
 from io import BytesIO
+from resources import api
 
 app = Flask(__name__)
+CORS(app, origins=["http://localhost:8080"])
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///banking.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'softwareengineeringproject'
 
 db.init_app(app)
+api.init_app(app)
 
-CORS(app)
 
 load_dotenv()
 
@@ -582,45 +584,56 @@ def list_beneficiaries(customer_id):
 
 ####################################### Transfer Funds Route #######################################
 
-def update_account_balance(account):
-    txns = Transaction.query.filter_by(account_id=account.id).all()
-    balance = 0
-    for t in txns:
-        if t.transaction_type == 'credit':
-            balance += t.amount
-        else:
-            balance -= t.amount
-    account.balance = balance
+def update_account_balance(account, amount, transaction_type):
+    if transaction_type == "credit":
+        account.balance += amount
+    elif transaction_type == "debit":
+        if account.balance < amount:
+            raise ValueError("Insufficient balance")
+        account.balance -= amount
+    
     db.session.commit()
 
+
 ####################################### Update Banace Function #######################################
+
 
 @app.route('/customer/transfer', methods=['POST'])
 def transfer_funds():
     data = request.get_json()
     sender_id = data.get('customer_id')
     beneficiary_acc_number = data.get('beneficiary_account')
-    amount = float(data.get('amount'))
+    amount = float(data.get('amount', 0))
     remarks = data.get('remarks', '')
+
+    if amount <= 0:
+        return jsonify({'message': 'Invalid transfer amount'}), 400
 
     sender_acc = Account.query.filter_by(customer_id=sender_id).first()
     if not sender_acc:
         return jsonify({'message': 'Sender account not found'}), 404
 
-    beneficiary = Beneficiary.query.filter_by(customer_id=sender_id, account_number=beneficiary_acc_number).first()
-    if not beneficiary:
-        return jsonify({'message': 'Beneficiary not found'}), 404
-    if not beneficiary.verified:
-        return jsonify({'message': 'Beneficiary not verified yet'}), 400
-    if beneficiary.cooling_period_end and datetime.utcnow() < beneficiary.cooling_period_end:
-        return jsonify({'message': 'Cooling period active. Try later.'}), 400
     if sender_acc.balance < amount:
         return jsonify({'message': 'Insufficient balance'}), 400
 
+    beneficiary = Beneficiary.query.filter_by(
+        customer_id=sender_id,
+        account_number=beneficiary_acc_number
+    ).first()
+    if not beneficiary:
+        return jsonify({'message': 'Beneficiary not found'}), 404
+
+    if not beneficiary.verified:
+        return jsonify({'message': 'Beneficiary not verified yet'}), 400
+
+    if beneficiary.cooling_period_end and datetime.utcnow() < beneficiary.cooling_period_end:
+        return jsonify({'message': 'Cooling period active. Try later.'}), 400
+
     receiver_acc = Account.query.filter_by(account_number=beneficiary.account_number).first()
-    if not receiver_acc:
-        return jsonify({'message': 'Receiver account not found'}), 404
-    if receiver_acc.id == sender_acc.id:
+    internal_transfer = receiver_acc is not None
+
+
+    if internal_transfer and receiver_acc.id == sender_acc.id:
         return jsonify({'message': 'Cannot transfer to same account'}), 400
 
     debit_txn = Transaction(
@@ -630,28 +643,44 @@ def transfer_funds():
         description=f'Transfer to {beneficiary.name} ({beneficiary.account_number}) - {remarks}'
     )
     db.session.add(debit_txn)
+    sender_acc.balance -= amount
 
-    credit_txn = Transaction(
-        account_id=receiver_acc.id,
-        transaction_type='credit',
-        amount=amount,
-        description=f'Transfer from {sender_acc.customer.full_name} ({sender_acc.account_number})'
-    )
-    db.session.add(credit_txn)
+    if internal_transfer:
+        credit_txn = Transaction(
+            account_id=receiver_acc.id,
+            transaction_type='credit',
+            amount=amount,
+            description=f'Transfer from {sender_acc.customer.full_name} ({sender_acc.account_number})'
+        )
+        db.session.add(credit_txn)
+        receiver_acc.balance += amount
+    else:
+        credit_txn = None
 
     db.session.commit()
 
-    update_account_balance(sender_acc)
-    update_account_balance(receiver_acc)
+    send_notification(
+        sender_id,
+        "Debit Alert",
+        f"₹{amount} debited to {beneficiary.name}.",
+        sender_acc.customer.email
+    )
 
-    send_notification(sender_id, "Debit Alert", f"₹{amount} debited to {beneficiary.name}.", sender_acc.customer.email)
-    send_notification(receiver_acc.customer.id, "Credit Alert", f"₹{amount} credited from {sender_acc.customer.full_name}.", receiver_acc.customer.email)
+    if internal_transfer:
+        send_notification(
+            receiver_acc.customer.id,
+            "Credit Alert",
+            f"₹{amount} credited from {sender_acc.customer.full_name}.",
+            receiver_acc.customer.email
+        )
 
     return jsonify({
-        'message': f'₹{amount} transferred successfully to {beneficiary.name}',
+        'message': f'₹{amount} transferred successfully to {beneficiary.name} '
+                   + ('(Internal Transfer)' if internal_transfer else '(External Transfer)'),
         'debit_transaction_id': debit_txn.transaction_uuid,
-        'credit_transaction_id': credit_txn.transaction_uuid
+        'credit_transaction_id': credit_txn.transaction_uuid if credit_txn else None
     }), 200
+
 
 ############################### Bill Payments / Recharges / FASTag Top-up ##############################
 
@@ -981,16 +1010,30 @@ def approve_kyc(kyc_id):
 
     db.session.commit()
 
+    initial_transaction = Transaction(
+        account_id=account.id,
+        transaction_type="credit",
+        amount=10000.0,
+        description="Initial account funding of ₹10,000"
+    )
+    db.session.add(initial_transaction)
+    db.session.commit()
+
     send_email(
         customer.email,
-        "KYC Approved 🎉",
+        "KYC Approved",
         f"Dear {customer.full_name},\n\nYour KYC has been approved.\n"
         f"Your new bank account number is: {account_number}\n"
         f"You may now use all banking services."
     )
 
-    return jsonify({"message": "KYC Approved"}), 200
-
+    # return jsonify({"message": "KYC Approved"}), 200
+    return jsonify({
+        "message": "KYC approved. Account created with ₹10,000 balance.",
+        "account_number": account.account_number,
+        "transaction_uuid": initial_transaction.transaction_uuid,
+        "transaction_description": initial_transaction.description
+    }), 200
 
 
 ################################# Reject KYC Request (Manager) Route ##################################
@@ -1027,6 +1070,195 @@ def reject_kyc(kyc_id):
 @app.route('/kyc_docs/<path:filename>', methods=['GET'])
 def serve_kyc_document(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
+
+########################################## Profile View ############################################
+
+@app.route("/customer/profile/<int:customer_id>", methods=["GET"])
+def get_customer_profile(customer_id):
+    customer = Customer.query.get(customer_id)
+    if not customer:
+        return jsonify({"message": "Customer not found"}), 404
+
+    account = Account.query.filter_by(customer_id=customer_id).first()
+
+    kyc = KYC.query.filter_by(customer_id=customer_id).first()
+
+    profile = {
+        "customer_id": customer.id,
+        "full_name": customer.full_name,
+        "email": customer.email,
+        "phone": customer.phone,
+        "is_active": customer.is_active,
+        "created_at": customer.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+
+        "account": {
+            "account_number": account.account_number if account else None,
+            "account_type": account.account_type if account else None,
+            "balance": account.balance if account else None,
+            "created_at": account.created_at.strftime("%Y-%m-%d %H:%M:%S") if account else None
+        },
+
+        "kyc": {
+            "status": kyc.status if kyc else "not_submitted",
+            "aadhaar_file": kyc.aadhaar_file if kyc else None,
+            "pan_file": kyc.pan_file if kyc else None,
+            "photo_file": kyc.photo_file if kyc else None,
+            "signature_file": kyc.signature_file if kyc else None,
+            "otp_verified": kyc.otp_verified if kyc else False,
+            "submitted_at": kyc.submitted_at.strftime("%Y-%m-%d %H:%M:%S") if kyc else None,
+            "reviewed_at": kyc.reviewed_at.strftime("%Y-%m-%d %H:%M:%S") if (kyc and kyc.reviewed_at) else None,
+            "reviewer_comment": kyc.reviewer_comment if kyc else None
+        }
+    }
+
+    return jsonify(profile), 200
+
+########################################### Get KYC File ############################################
+
+@app.route('/profile/kyc_docs/<path:filepath>', methods=['GET'])
+def serve_kyc_document_profile(filepath):
+    from urllib.parse import unquote
+    filepath = unquote(filepath)
+
+    if not os.path.exists(filepath):
+        return jsonify({"message": "File not found"}), 404
+
+    return send_file(filepath)
+
+########################################### Mounesh's Code ############################################
+
+@app.route('/api/customer/register', methods = ['POST'])
+# or we can write - @app.post('/api/register')
+def customer_register():
+    credentials = request.get_json()
+    if not Customer.query.filter_by(email=credentials["email"]).first():
+        # dob_str = credentials.get("dob", "").strip()
+        # if not dob_str:
+        #     return jsonify({"error": "Date of Birth is required"}), 400  # Handle missing input
+        dob_date = datetime.strptime(credentials["dob"], "%Y-%m-%d").date()
+        count = Customer.query.count()
+        new_customer = Customer(email = credentials["email"],
+                                        name = credentials["name"],
+                                        password = generate_password_hash(credentials["password"]),
+                                        role = 1,
+                                        dob = dob_date,
+                                        contact_number = credentials["contact_number"],
+                                        date_of_signup = datetime.now().date(),
+                                        account_number = 1000+count+1,
+                                        location = credentials["location"],
+                                        pin_code = credentials["pincode"])
+        db.session.add(new_customer)
+        db.session.commit()
+        return jsonify({
+            "message": "Customer created successfully"
+        }), 201
+    
+    return jsonify({
+        "message": "Customer already exits!"
+    }), 400
+
+
+# manager registration
+########################################### Manager Registration ############################################
+@app.route('/api/manager/register', methods = ['POST'])
+    # or we can write - @app.post('/api/register')
+def manager_register():
+    credentials = request.get_json()
+    if not Bank_manager.query.filter_by(email=credentials["email"]).first():
+        # dob_str = credentials.get("dob", "").strip()
+        # if not dob_str:
+        #     return jsonify({"error": "Date of Birth is required"}), 400  # Handle missing input
+        
+        new_manager = Bank_manager(email = credentials["email"],
+                                        name = credentials["name"],
+                                        password = generate_password_hash(credentials["password"]),
+                                        role = 3,
+                                        contact_number = credentials["contact_number"],
+                                        date_of_regn = datetime.now().date())
+        db.session.add(new_manager)
+        db.session.commit()
+        return jsonify({
+            "message": "Manager created successfully"
+        }), 201
+    
+    return jsonify({
+        "message": "Manager already exits!"
+    }), 400
+
+
+    # employee registration
+########################################### employee registration ############################################
+
+@app.route('/api/employee/register', methods = ['POST'])
+# or we can write - @app.post('/api/register')
+def employee_register():
+    credentials = request.get_json()
+    if not Bank_employee.query.filter_by(email=credentials["email"]).first():
+        # dob_str = credentials.get("dob", "").strip()
+        # if not dob_str:
+        #     return jsonify({"error": "Date of Birth is required"}), 400  # Handle missing input
+        
+        new_employee = Bank_employee(email = credentials["email"],
+                                        name = credentials["name"],
+                                        password = generate_password_hash(credentials["password"]),
+                                        role = 2,
+                                        contact_number = credentials["contact_number"],
+                                        date_of_regn = datetime.now().date(),
+                                        manager_id = credentials["manager_id"])
+        db.session.add(new_employee)
+        db.session.commit()
+        return jsonify({
+            "message": "Employee created successfully"
+        }), 201
+    
+    return jsonify({
+        "message": "Employee already exits!"
+    }), 400
+
+########################################### Employee Login ############################################
+
+@app.route('/api/employee/login', methods = ['POST'])
+# or we can write - @app.post('/api/register')
+def employee_login():
+    credentials = request.get_json()
+    emp = Bank_employee.query.filter_by(email=credentials["email"]).first()
+    if not emp:
+        return jsonify({
+            "message": "Employee does not exist"
+        }), 400
+    elif not check_password_hash(emp.password,credentials['password']):
+        return jsonify({
+            "message": "Password does not match"
+        }), 400
+    else:
+        return jsonify({
+            "message": "Login successful"
+        }), 201
+        
+########################################### Manager Login ############################################
+        
+@app.route('/api/manager/login', methods = ['POST'])
+# or we can write - @app.post('/api/register')
+def manager_login():
+    credentials = request.get_json()
+    print(credentials)
+    print(generate_password_hash(credentials["password"]))
+    manager = Bank_manager.query.filter_by(email=credentials["email"]).first()
+    print(manager.password)
+    if not manager:
+        return jsonify({
+            "message": "Manager does not exist"
+        }), 400
+
+    elif not check_password_hash(manager.password,credentials['password']):
+        return jsonify({
+            "message": "Password does not match"
+        }), 400
+    else:
+        return jsonify({
+            "message": "Login successful"
+        }), 201
+
 
 ########################################### Dummy Data Route ############################################
 

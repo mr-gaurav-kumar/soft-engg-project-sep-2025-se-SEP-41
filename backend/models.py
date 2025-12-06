@@ -20,6 +20,8 @@ class Customer(db.Model):
     beneficiaries = db.relationship('Beneficiary', backref='customer', lazy=True)
     spending_categories = db.relationship('SpendingCategory', backref='customer', lazy=True)
     virtual_cards = db.relationship('VirtualCard', backref='customer', lazy=True)
+    issues = db.relationship('Issue', backref='customer', lazy=True)
+    tasks = db.relationship('Task', backref = 'customer', lazy = True)
 
 class KYC(db.Model):
     __tablename__ = 'kyc'
@@ -57,25 +59,13 @@ class Account(db.Model):
     __tablename__ = 'accounts'
     id = db.Column(db.Integer, primary_key=True)
     account_number = db.Column(db.String(20), unique=True, nullable=False)
-    balance = db.Column(db.Float, default=0.0)
+    balance = db.Column(db.Float, default=10000.0)
     account_type = db.Column(db.String(50), default='savings')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False)
 
     transactions = db.relationship('Transaction', backref='account', lazy=True)
     bill_payments = db.relationship('BillPayment', backref='account', lazy=True)
-
-
-# class Transaction(db.Model):
-#     __tablename__ = 'transactions'
-#     id = db.Column(db.Integer, primary_key=True)
-#     transaction_type = db.Column(db.String(50))
-#     amount = db.Column(db.Float, nullable=False)
-#     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-#     description = db.Column(db.String(200))
-#     account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=False)
-
-import uuid
 
 class Transaction(db.Model):
     __tablename__ = 'transactions'
@@ -152,4 +142,59 @@ class Notification(db.Model):
             "is_read": self.is_read,
             "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S")
         }
+    
+
+class Bank_employee(db.Model):
+    __tablename__ = 'bank_employee' # If we do not define this, the model auto assigns name as lower case of class name
+    id=db.Column(db.Integer,primary_key=True)
+    email=db.Column(db.String,unique=True, nullable = False)
+    name = db.Column(db.String, nullable = False)
+    password = db.Column(db.String, nullable = False)
+    role = db.Column(db.Integer, default =2)
+    date_of_regn = db.Column(db.DateTime, default = datetime.now)
+    contact_number = db.Column(db.String, nullable = False)
+    status = db.Column(db.String, default = 'Active') # Active - 1, Flagged - 2, Blocked - 3
+    manager_id = db.Column(db.Integer,db.ForeignKey('bank_manager.id'), nullable = False)
+    tasks = db.relationship('Task', backref = 'bank_employee', lazy = True)
+    
+
+
+class Bank_manager(db.Model):
+    __tablename__ = 'bank_manager' # If we do not define this, the model auto assigns name as lower case of class name
+    id=db.Column(db.Integer,primary_key=True)
+    email=db.Column(db.String,unique=True, nullable = False)
+    name = db.Column(db.String, nullable = False)
+    password = db.Column(db.String, nullable = False)
+    role = db.Column(db.Integer, default =2)
+    date_of_regn = db.Column(db.DateTime, default = datetime.now)
+    contact_number = db.Column(db.String, nullable = False)
+    status = db.Column(db.String, default = 'Active') # Active - 1, Flagged - 2, Blocked - 3
+    # manager_id = db.Column(db.Integer,primary_key=True)
+    employees = db.relationship('Bank_employee', backref = 'bank_manager', lazy = True)
+
+
+
+class Task(db.Model):
+    __tablename__ = 'task'
+    id=db.Column(db.Integer,primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('bank_employee.id'), nullable = False)
+    customer_id = db.Column(db.Integer,db.ForeignKey('customers.id'), nullable = False)
+    title = db.Column(db.String, nullable = False)
+    description = db.Column(db.String, nullable = False)
+    # flag_sp = db.Column(db.Integer, default = 0) # Flagged - 1, not flagged - 0
+    assigned_date = db.Column(db.DateTime, default = datetime.now) # NEED TO CONFIRM on type
+    priority = db.Column(db.String, nullable = False)
+    remarks = db.Column(db.String)
+    due_date = db.Column(db.DateTime, nullable = False)
+    status = db.Column(db.String, default = 'Pending') # Pending, Complete
+
+
+class Issue(db.Model):
+    __tablename__ = 'issue'
+    id=db.Column(db.Integer,primary_key=True)
+    customer_id = db.Column(db.Integer,db.ForeignKey('customers.id'), nullable = False)
+    title = db.Column(db.String, nullable = False)
+    description = db.Column(db.String, nullable = False)
+    assigned_date = db.Column(db.DateTime, default = datetime.now) # NEED TO CONFIRM on type
+    status = db.Column(db.String, default = 'Pending') # Pending, Complete
 
