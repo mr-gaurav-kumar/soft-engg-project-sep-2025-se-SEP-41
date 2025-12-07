@@ -114,19 +114,19 @@
         <!-- Profile Content -->
         <div v-if="profile && !loading">
           <!-- CUSTOMER DETAILS -->
-          <div class="card border-0 shadow-lg mb-4 rounded-4 overflow-hidden profile-card" style="background-color: #1e293b; border: 1px solid rgba(255,255,255,0.1) !important;">
-            <div class="card-header-profile-customer p-4" style="background-color: rgba(13, 110, 253, 0.1); border-bottom: 1px solid rgba(255,255,255,0.1);">
+          <div class="card border-0 shadow-lg mb-4 rounded-4 overflow-hidden profile-card" style="background-color: #f8f9fa; border: 1px solid rgba(0,0,0,0.05) !important;">
+            <div class="card-header-profile-customer p-4" style="background-color: rgba(13, 110, 253, 0.1); border-bottom: 1px solid rgba(13, 110, 253, 0.2);">
               <div class="d-flex align-items-center gap-3">
                 <div class="profile-icon-box bg-primary bg-opacity-20 rounded-3 d-flex align-items-center justify-content-center" style="width: 56px; height: 56px;">
                   <Users :size="28" class="text-primary" />
                 </div>
                 <div>
-                  <h5 class="fw-bold text-white mb-1">Customer Details</h5>
-                  <p class="text-white-50 small mb-0">Personal information and account status</p>
+                  <h5 class="fw-bold text-dark mb-1">Customer Details</h5>
+                  <p class="text-muted small mb-0">Personal information and account status</p>
                 </div>
               </div>
             </div>
-            <div class="card-body p-4" style="background-color: #1e293b;">
+            <div class="card-body p-4" style="background-color: #f8f9fa;">
               <div class="row g-4">
                 <div class="col-md-6">
                   <div class="profile-info-item">
@@ -161,19 +161,19 @@
           </div>
 
           <!-- ACCOUNT DETAILS -->
-          <div class="card border-0 shadow-lg mb-4 rounded-4 overflow-hidden profile-card" style="background-color: #1e293b; border: 1px solid rgba(255,255,255,0.1) !important;">
-            <div class="card-header-profile-account p-4" style="background-color: rgba(25, 135, 84, 0.1); border-bottom: 1px solid rgba(255,255,255,0.1);">
+          <div class="card border-0 shadow-lg mb-4 rounded-4 overflow-hidden profile-card" style="background-color: #f8f9fa; border: 1px solid rgba(0,0,0,0.05) !important;">
+            <div class="card-header-profile-account p-4" style="background-color: rgba(25, 135, 84, 0.1); border-bottom: 1px solid rgba(25, 135, 84, 0.2);">
               <div class="d-flex align-items-center gap-3">
                 <div class="profile-icon-box bg-success bg-opacity-20 rounded-3 d-flex align-items-center justify-content-center" style="width: 56px; height: 56px;">
                   <LayoutDashboard :size="28" class="text-success" />
                 </div>
                 <div>
-                  <h5 class="fw-bold text-white mb-1">Account Information</h5>
-                  <p class="text-white-50 small mb-0">Banking account details and balance</p>
+                  <h5 class="fw-bold text-dark mb-1">Account Information</h5>
+                  <p class="text-muted small mb-0">Banking account details and balance</p>
                 </div>
               </div>
             </div>
-            <div class="card-body p-4" style="background-color: #1e293b;">
+            <div class="card-body p-4" style="background-color: #f8f9fa;">
               <div v-if="profile.account && profile.account.account_number">
                 <div class="row g-4">
                   <div class="col-md-6">
@@ -201,7 +201,7 @@
                 </div>
               </div>
               <div v-else class="text-center py-4">
-                <div class="text-white-50">
+                <div class="text-muted">
                   <p class="mb-0">No account created yet.</p>
                 </div>
               </div>
@@ -209,19 +209,19 @@
           </div>
 
           <!-- KYC DETAILS -->
-          <div class="card border-0 shadow-lg rounded-4 overflow-hidden profile-card" style="background-color: #1e293b; border: 1px solid rgba(255,255,255,0.1) !important;">
-            <div class="card-header-profile-kyc p-4" style="background-color: rgba(255, 193, 7, 0.1); border-bottom: 1px solid rgba(255,255,255,0.1);">
+          <div class="card border-0 shadow-lg rounded-4 overflow-hidden profile-card" style="background-color: #f8f9fa; border: 1px solid rgba(0,0,0,0.05) !important;">
+            <div class="card-header-profile-kyc p-4" style="background-color: rgba(255, 193, 7, 0.1); border-bottom: 1px solid rgba(255, 193, 7, 0.2);">
               <div class="d-flex align-items-center gap-3">
                 <div class="profile-icon-box bg-warning bg-opacity-20 rounded-3 d-flex align-items-center justify-content-center" style="width: 56px; height: 56px;">
                   <FileText :size="28" class="text-warning" />
                 </div>
                 <div>
-                  <h5 class="fw-bold text-white mb-1">KYC Information</h5>
-                  <p class="text-white-50 small mb-0">Verification status and documents</p>
+                  <h5 class="fw-bold text-dark mb-1">KYC Information</h5>
+                  <p class="text-muted small mb-0">Verification status and documents</p>
                 </div>
               </div>
             </div>
-            <div class="card-body p-4" style="background-color: #1e293b;">
+            <div class="card-body p-4" style="background-color: #f8f9fa;">
               <div class="row g-4 mb-4">
                 <div class="col-md-6">
                   <div class="profile-info-item">
@@ -255,33 +255,33 @@
 
               <div v-if="profile.kyc.reviewer_comment" class="mb-4">
                 <label class="profile-label">Reviewer Comment</label>
-                <div class="reviewer-comment-box p-3 rounded-3" style="background-color: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
-                  <p class="mb-0 text-white">{{ profile.kyc.reviewer_comment }}</p>
+                <div class="reviewer-comment-box p-3 rounded-3" style="background-color: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.1);">
+                  <p class="mb-0 text-dark">{{ profile.kyc.reviewer_comment }}</p>
                 </div>
               </div>
 
-              <hr class="my-4" style="border-color: rgba(255,255,255,0.1);">
+              <hr class="my-4" style="border-color: rgba(0,0,0,0.1);">
 
               <!-- DOCUMENTS -->
               <div>
-                <h6 class="fw-bold mb-3 text-white">Uploaded Documents</h6>
+                <h6 class="fw-bold mb-3 text-dark">Uploaded Documents</h6>
                 <div class="row g-3">
                   <div v-for="doc in kycDocs" :key="doc.label" class="col-md-6">
-                    <div class="document-item p-3 rounded-3 d-flex align-items-center justify-content-between" style="background-color: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
+                    <div class="document-item p-3 rounded-3 d-flex align-items-center justify-content-between" style="background-color: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.1);">
                       <div class="d-flex align-items-center gap-3">
-                        <div class="document-icon-box rounded-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background-color: rgba(255,255,255,0.1);">
-                          <FileText :size="20" class="text-white-50" />
+                        <div class="document-icon-box rounded-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background-color: rgba(0,0,0,0.05);">
+                          <FileText :size="20" class="text-muted" />
                         </div>
                         <div>
-                          <p class="mb-0 fw-medium text-white">{{ doc.label }}</p>
-                          <small class="text-white-50">{{ doc.file ? 'Uploaded' : 'Not uploaded' }}</small>
+                          <p class="mb-0 fw-medium text-dark">{{ doc.label }}</p>
+                          <small class="text-muted">{{ doc.file ? 'Uploaded' : 'Not uploaded' }}</small>
                         </div>
                       </div>
                       <div>
                         <a v-if="doc.file" href="#" @click.prevent="openModal(doc.file)" class="btn btn-sm btn-outline-primary rounded-pill px-3">
                           View
                         </a>
-                        <span v-else class="text-white-50 small">—</span>
+                        <span v-else class="text-muted small">—</span>
                       </div>
                     </div>
                   </div>
@@ -295,13 +295,13 @@
 
     <!-- File Preview Modal -->
     <div v-if="showModal" class="modal-backdrop" @click="showModal = false" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 2000; display: flex; align-items: center; justify-content: center;">
-      <div class="bg-white rounded-4 shadow-lg" style="width: 90%; max-width: 900px; max-height: 90vh; z-index: 2001;" @click.stop>
-        <div class="p-4 border-bottom d-flex justify-content-between align-items-center">
+      <div class="bg-white rounded-4 shadow-lg modal-container" style="width: 30vw; height: 30vh; z-index: 2001; display: flex; flex-direction: column;" @click.stop>
+        <div class="p-4 border-bottom d-flex justify-content-between align-items-center" style="flex-shrink: 0;">
           <h5 class="fw-bold mb-0">Document Preview</h5>
           <button class="btn btn-link p-0" @click="showModal = false" style="font-size: 1.5rem; line-height: 1;">&times;</button>
         </div>
-        <div class="p-4">
-          <iframe v-if="modalFile" :src="fileUrl(modalFile)" width="100%" height="600px" style="border: none;"></iframe>
+        <div class="modal-body" style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 15px; overflow: auto; min-height: 0;">
+          <iframe v-if="modalFile" :src="fileUrl(modalFile)" class="document-iframe" style="border: none; width: 100%; height: 85%;"></iframe>
         </div>
       </div>
     </div>
@@ -502,6 +502,33 @@ export default {
   animation: fadeIn 0.2s ease;
 }
 
+.modal-container {
+  display: flex;
+  flex-direction: column;
+  width: 30vw;
+  height: 30vh;
+  min-width: 400px;
+  min-height: 400px;
+}
+
+.modal-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  overflow: auto;
+  padding: 15px;
+  position: relative;
+}
+
+.document-iframe {
+  width: 100%;
+  height: 85%;
+  border: none;
+  flex-shrink: 0;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -567,14 +594,14 @@ export default {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: rgba(255,255,255,0.6);
+  color: #495057;
   margin-bottom: 0.5rem;
 }
 
 .profile-value {
   font-size: 1rem;
   font-weight: 500;
-  color: #ffffff;
+  color: #212529;
   margin-bottom: 0;
 }
 
@@ -596,8 +623,8 @@ export default {
 .account-type-badge {
   display: inline-block;
   padding: 0.25rem 0.75rem;
-  background-color: rgba(13, 110, 253, 0.2);
-  color: #60a5fa;
+  background-color: rgba(13, 110, 253, 0.15);
+  color: #0d6efd;
   border-radius: 0.5rem;
   font-size: 0.875rem;
   font-weight: 600;
@@ -614,43 +641,43 @@ export default {
 }
 
 .status-active {
-  background-color: rgba(25, 135, 84, 0.2);
-  color: #4ade80;
+  background-color: rgba(25, 135, 84, 0.15);
+  color: #198754;
 }
 
 .status-inactive {
-  background-color: rgba(220, 53, 69, 0.2);
-  color: #f87171;
+  background-color: rgba(220, 53, 69, 0.15);
+  color: #dc3545;
 }
 
 .status-approved {
-  background-color: rgba(25, 135, 84, 0.2);
-  color: #4ade80;
+  background-color: rgba(25, 135, 84, 0.15);
+  color: #198754;
 }
 
 .status-rejected {
-  background-color: rgba(220, 53, 69, 0.2);
-  color: #f87171;
+  background-color: rgba(220, 53, 69, 0.15);
+  color: #dc3545;
 }
 
 .status-pending {
   background-color: rgba(255, 193, 7, 0.2);
-  color: #fbbf24;
+  color: #ffc107;
 }
 
 .status-not-submitted {
-  background-color: rgba(255,255,255,0.1);
-  color: rgba(255,255,255,0.6);
+  background-color: rgba(108, 117, 125, 0.15);
+  color: #6c757d;
 }
 
 .status-verified {
-  background-color: rgba(25, 135, 84, 0.2);
-  color: #4ade80;
+  background-color: rgba(25, 135, 84, 0.15);
+  color: #198754;
 }
 
 .status-unverified {
-  background-color: rgba(220, 53, 69, 0.2);
-  color: #f87171;
+  background-color: rgba(220, 53, 69, 0.15);
+  color: #dc3545;
 }
 
 .reviewer-comment-box {

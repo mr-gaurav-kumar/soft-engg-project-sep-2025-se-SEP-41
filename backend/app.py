@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, send_file, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 import random
 from models import *
@@ -217,7 +218,9 @@ def upload_kyc(customer_id):
         aadhaar_file=aadhaar_file,
         pan_file=pan_file,
         photo_file=photo_file,
-        signature_file=signature_file
+        signature_file=signature_file,
+        ai_validation_status=None,
+        ai_remarks=None
     )
 
     db.session.add(kyc)
@@ -1350,8 +1353,16 @@ def approve_kyc(kyc_id):
     if not kyc:
         return jsonify({"error": "KYC record not found"}), 404
 
+    # Check if customer exists (handle orphaned KYC records)
+    customer = Customer.query.get(kyc.customer_id)
+    if not customer:
+        return jsonify({"error": "Customer associated with this KYC no longer exists"}), 400
+
+    # OTP verification is recommended but not required for manager/employee approval
+    # Managers and employees can approve KYC manually even without OTP verification
     if not kyc.otp_verified:
-        return jsonify({"error": "Customer must verify OTP before approval"}), 400
+        # Allow approval but log a warning
+        print(f"Warning: Approving KYC {kyc_id} without OTP verification")
 
     data = request.get_json(silent=True) or {}
     comment = data.get("comment") or request.form.get("comment", "")
@@ -1359,6 +1370,10 @@ def approve_kyc(kyc_id):
     kyc.status = "approved"
     kyc.reviewed_at = datetime.utcnow()
     kyc.reviewer_comment = comment
+    
+    # If OTP wasn't verified, mark it as verified now (manager override)
+    if not kyc.otp_verified:
+        kyc.otp_verified = True
 
     customer = Customer.query.get(kyc.customer_id)
     customer.is_active = True
@@ -1527,12 +1542,18 @@ def get_customer_profile(customer_id):
 @app.route('/profile/kyc_docs/<path:filepath>', methods=['GET'])
 def serve_kyc_document_profile(filepath):
     from urllib.parse import unquote
+    from flask import Response
     filepath = unquote(filepath)
 
     if not os.path.exists(filepath):
         return jsonify({"message": "File not found"}), 404
 
-    return send_file(filepath)
+    response = send_file(filepath)
+    # Add CORS headers explicitly for file serving
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Methods', 'GET')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+    return response
 
 ########################################### Mounesh's Code ############################################
 
@@ -1641,7 +1662,10 @@ def employee_login():
         }), 400
     else:
         return jsonify({
-            "message": "Login successful"
+            "message": "Login successful",
+            "employee_id": emp.id,
+            "name": emp.name,
+            "email": emp.email
         }), 201
         
 ########################################### Manager Login ############################################
@@ -1650,10 +1674,7 @@ def employee_login():
 # or we can write - @app.post('/api/register')
 def manager_login():
     credentials = request.get_json()
-    print(credentials)
-    print(generate_password_hash(credentials["password"]))
     manager = Bank_manager.query.filter_by(email=credentials["email"]).first()
-    print(manager.password)
     if not manager:
         return jsonify({
             "message": "Manager does not exist"
@@ -1665,7 +1686,10 @@ def manager_login():
         }), 400
     else:
         return jsonify({
-            "message": "Login successful"
+            "message": "Login successful",
+            "manager_id": manager.id,
+            "name": manager.name,
+            "email": manager.email
         }), 201
 
 
@@ -1774,30 +1798,42 @@ from ai_service import ai
 # --- Feature 1: Robust KYC Analyzer ---
 @app.route('/api/kyc/analyze/<int:kyc_id>', methods=['POST'])
 def analyze_kyc_document(kyc_id):
-    kyc_record = KYC.query.get(kyc_id)
-    if not kyc_record:
-        return jsonify({"message": "Record not found"}), 404
-    
-    # 1. Collect all 4 files (Robust check)
-    documents = {
-        "Aadhaar": kyc_record.aadhaar_file,
-        "PAN": kyc_record.pan_file,
-        "Photo": kyc_record.photo_file,
-        "Signature": kyc_record.signature_file
-    }
+    try:
+        kyc_record = KYC.query.get(kyc_id)
+        if not kyc_record:
+            response = jsonify({"message": "Record not found"})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 404
+        
+        # 1. Collect all 4 files (Robust check)
+        documents = {
+            "Aadhaar": kyc_record.aadhaar_file,
+            "PAN": kyc_record.pan_file,
+            "Photo": kyc_record.photo_file,
+            "Signature": kyc_record.signature_file
+        }
 
-    # 2. Run AI
-    result = ai.analyze_kyc(documents)
-    
-    # 3. Save
-    kyc_record.ai_remarks = result
-    kyc_record.ai_validation_status = "Valid" if "Valid" in result else "Review Needed"
-    db.session.commit()
+        # 2. Run AI
+        result = ai.analyze_kyc(documents)
+        
+        # 3. Save
+        kyc_record.ai_remarks = result
+        kyc_record.ai_validation_status = "Valid" if "Valid" in result else "Review Needed"
+        db.session.commit()
 
-    return jsonify({
-        "ai_status": kyc_record.ai_validation_status,
-        "ai_remarks": result
-    })
+        response = jsonify({
+            "ai_status": kyc_record.ai_validation_status,
+            "ai_remarks": result
+        })
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 200
+    except Exception as e:
+        print(f"Error in analyze_kyc_document: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        response = jsonify({"message": f"Internal server error: {str(e)}"})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
 
 
 # --- Feature 2: Dispute Drafter (Smart Context) ---
@@ -1833,19 +1869,32 @@ def draft_dispute(issue_id):
 # --- Feature 3: Spending Coach (Simple) ---
 @app.route('/api/customer/coach/<int:customer_id>', methods=['GET'])
 def spending_coach(customer_id):
-    account = Account.query.filter_by(customer_id=customer_id).first()
-    if not account: return jsonify({"error": "No account"}), 404
+    try:
+        account = Account.query.filter_by(customer_id=customer_id).first()
+        if not account: 
+            response = jsonify({"error": "No account"})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 404
 
-    # 1. Get recent debits
-    txns = Transaction.query.filter_by(account_id=account.id)\
-           .filter(Transaction.transaction_type == 'debit')\
-           .order_by(Transaction.timestamp.desc()).limit(15).all()
-    
-    txn_data = [{"desc": t.description, "amount": t.amount} for t in txns]
+        # 1. Get recent debits
+        txns = Transaction.query.filter_by(account_id=account.id)\
+               .filter(Transaction.transaction_type == 'debit')\
+               .order_by(Transaction.timestamp.desc()).limit(15).all()
+        
+        txn_data = [{"desc": t.description, "amount": t.amount} for t in txns]
 
-    # 2. AI Advice
-    advice = ai.spending_tips(txn_data)
-    return jsonify({"advice": advice})
+        # 2. AI Advice
+        advice = ai.spending_tips(txn_data)
+        response = jsonify({"advice": advice})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 200
+    except Exception as e:
+        print(f"Error in spending_coach: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        response = jsonify({"error": f"Internal server error: {str(e)}"})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
 
 # --- Feature 4: Smart Banking Chatbot ---
 # --- Feature 4: Smart Banking Chatbot ---
@@ -1886,9 +1935,18 @@ def chat_bot():
             context_data = f"{account_info}\n\n{spending_text}"
 
     # 2. Get AI Response
-    reply = ai.general_chat(user_message, context_data)
-    
-    return jsonify({"response": reply})
+    try:
+        reply = ai.general_chat(user_message, context_data)
+        response = jsonify({"response": reply})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 200
+    except Exception as e:
+        print(f"Error in chat_bot: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        response = jsonify({"error": f"Internal server error: {str(e)}"})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()

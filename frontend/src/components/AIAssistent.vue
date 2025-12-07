@@ -1,5 +1,5 @@
 <template>
-  <div class="d-flex min-vh-100 font-sans" :class="isDarkMode ? 'bg-dark' : 'bg-light'" :style="isDarkMode ? 'background-color: #0f172a;' : ''">
+  <div class="d-flex min-vh-100 bg-light font-sans">
     <!-- Sidebar -->
     <div class="sidebar d-flex flex-column shadow-sm" style="width: 280px; z-index: 1000; background-color: #1e293b;">
       <!-- Logo/Header -->
@@ -14,11 +14,7 @@
           </div>
         </div>
         
-        <div 
-          class="user-profile p-3 rounded-3 d-flex align-items-center gap-3 cursor-pointer hover-bg-light-transition" 
-          style="background-color: rgba(255,255,255,0.05);"
-          @click="router.push('/profile')"
-        >
+        <div class="user-profile p-3 rounded-3 d-flex align-items-center gap-3" style="background-color: rgba(255,255,255,0.05);">
           <div class="avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold">
             {{ customerInitials }}
           </div>
@@ -50,19 +46,6 @@
         </div>
       </div>
 
-      <!-- Dark Mode Toggle -->
-      <div class="px-3 py-2 border-top border-secondary border-opacity-25">
-        <button 
-          class="btn btn-ghost-dark text-white-50 w-100 d-flex align-items-center justify-content-between px-3 py-2 rounded-3 transition-all hover-text-white"
-          @click="toggleDarkMode"
-        >
-          <div class="d-flex align-items-center gap-3">
-            <component :is="isDarkMode ? Sun : Moon" :size="20" />
-            <span class="fw-medium">{{ isDarkMode ? 'Light Mode' : 'Dark Mode' }}</span>
-          </div>
-        </button>
-      </div>
-
       <!-- Logout -->
       <div class="p-3 border-top border-secondary border-opacity-25">
         <button class="btn btn-ghost-dark text-danger-emphasis w-100 d-flex align-items-center justify-content-center gap-2 py-2 hover-bg-danger-subtle" @click="handleLogout">
@@ -75,14 +58,10 @@
     <!-- Main Content -->
     <div class="flex-grow-1 d-flex flex-column h-100 overflow-hidden">
       <!-- Header -->
-      <header 
-        class="border-bottom px-4 py-3 d-flex justify-content-between align-items-center shadow-sm z-1"
-        :class="isDarkMode ? 'bg-dark' : 'bg-white border-light'"
-        :style="isDarkMode ? 'background-color: #1e293b; border-color: rgba(255,255,255,0.1) !important;' : ''"
-      >
+      <header class="bg-white border-bottom border-light px-4 py-3 d-flex justify-content-between align-items-center shadow-sm z-1">
         <div>
-          <h4 :class="isDarkMode ? 'fw-bold text-white mb-0' : 'fw-bold text-dark mb-0'">AI Assistant</h4>
-          <p :class="isDarkMode ? 'text-white-50 mb-0 small' : 'text-muted mb-0 small'">Your personal financial advisor.</p>
+          <h4 class="fw-bold text-dark mb-0">AI Assistant</h4>
+          <p class="text-muted mb-0 small">Your personal financial advisor.</p>
         </div>
         <div class="d-flex align-items-center gap-2">
           <div class="badge bg-success-subtle text-success border border-success-subtle d-flex align-items-center gap-1 px-3 py-2 rounded-pill">
@@ -222,14 +201,12 @@
         </div>
       </div>
     </div>
-
   </div>
 </template>
 
 <script>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
 import { 
   LayoutDashboard, 
   Users, 
@@ -241,11 +218,10 @@ import {
   User, 
   Coffee, 
   TrendingDown,
-  Wallet,
-  Moon,
-  Sun
+  Wallet
 } from 'lucide-vue-next'
-import { useDarkMode } from "@/composables/useDarkMode";
+
+import axios from 'axios'
 
 export default {
   name: 'AIAssistant',
@@ -260,12 +236,10 @@ export default {
     User,
     Coffee,
     TrendingDown,
-    Moon,
-    Sun
+    Wallet
   },
   setup() {
     const router = useRouter()
-    const { isDarkMode, toggleDarkMode } = useDarkMode()
     const customerName = localStorage.getItem("customer_name") || "Customer"
     
     const customerInitials = computed(() => {
@@ -332,9 +306,13 @@ export default {
       
       try {
         // Check if it's a spending-related query
-        if (isSpendingQuery(userMsg.text) && customerId) {
+        if (isSpendingQuery(userMsg.text) && customerId && !isNaN(customerId)) {
           // Use spending coach endpoint
-          const res = await axios.get(`http://127.0.0.1:5000/api/customer/coach/${customerId}`)
+          console.log('Using spending coach endpoint for customer:', customerId)
+          const res = await axios.get(`http://127.0.0.1:5000/api/customer/coach/${customerId}`, {
+            timeout: 300000 // 5 minutes timeout for AI processing
+          })
+          console.log('Spending coach response:', res.data)
           botResponse = {
             id: nextId,
             type: 'bot',
@@ -343,10 +321,14 @@ export default {
           }
         } else {
           // Use general chat endpoint
+          console.log('Using general chat endpoint, customerId:', customerId)
           const res = await axios.post('http://127.0.0.1:5000/api/chat', {
             message: userMsg.text,
-            user_id: customerId || null
+            user_id: customerId && !isNaN(customerId) ? customerId : null
+          }, {
+            timeout: 300000 // 5 minutes timeout for AI processing
           })
+          console.log('General chat response:', res.data)
           botResponse = {
             id: nextId,
             type: 'bot',
@@ -356,10 +338,11 @@ export default {
         }
       } catch (error) {
         console.error('AI Assistant Error:', error)
+        console.error('Error details:', error.response?.data, error.message)
         botResponse = {
           id: nextId,
           type: 'bot',
-          text: error.response?.data?.error || "Sorry, I'm having trouble connecting to the server. Please try again.",
+          text: error.response?.data?.error || error.message || "Sorry, I'm having trouble connecting to the server. Please try again.",
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       }
@@ -386,7 +369,6 @@ export default {
       router.push('/')
     }
 
-
     return { 
       navItems, 
       messages, 
@@ -397,9 +379,7 @@ export default {
       handleLogout,
       customerName,
       customerInitials,
-      isLoading,
-      isDarkMode,
-      toggleDarkMode
+      isLoading
     }
   },
   methods: {
@@ -461,30 +441,5 @@ export default {
 
 .hover-bg-light:hover {
   background-color: #f8f9fa !important;
-}
-
-.cursor-pointer {
-  cursor: pointer;
-}
-
-.hover-bg-light-transition {
-  transition: background-color 0.2s ease;
-}
-
-.hover-bg-light-transition:hover {
-  background-color: rgba(255,255,255,0.1) !important;
-}
-
-.modal-backdrop {
-  animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
 }
 </style>
