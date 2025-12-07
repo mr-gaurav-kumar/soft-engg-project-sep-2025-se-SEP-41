@@ -1,5 +1,5 @@
 <template>
-  <div class="d-flex min-vh-100 bg-light font-sans">
+  <div class="d-flex min-vh-100 font-sans" :class="isDarkMode ? 'bg-dark' : 'bg-light'" :style="isDarkMode ? 'background-color: #0f172a;' : ''">
     <!-- Sidebar -->
     <div class="sidebar d-flex flex-column shadow-sm" style="width: 280px; z-index: 1000; background-color: #1e293b;">
       <!-- Logo/Header -->
@@ -14,7 +14,11 @@
           </div>
         </div>
         
-        <div class="user-profile p-3 rounded-3 d-flex align-items-center gap-3" style="background-color: rgba(255,255,255,0.05);">
+        <div 
+          class="user-profile p-3 rounded-3 d-flex align-items-center gap-3 cursor-pointer hover-bg-light-transition" 
+          style="background-color: rgba(255,255,255,0.05);"
+          @click="$router.push('/profile')"
+        >
           <div class="avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold">
             {{ getInitials(customerName) }}
           </div>
@@ -45,6 +49,19 @@
         </div>
       </div>
 
+      <!-- Dark Mode Toggle -->
+      <div class="px-3 py-2 border-top border-secondary border-opacity-25">
+        <button 
+          class="btn btn-ghost-dark text-white-50 w-100 d-flex align-items-center justify-content-between px-3 py-2 rounded-3 transition-all hover-text-white"
+          @click="toggleDarkMode"
+        >
+          <div class="d-flex align-items-center gap-3">
+            <component :is="isDarkMode ? Sun : Moon" :size="20" />
+            <span class="fw-medium">{{ isDarkMode ? 'Light Mode' : 'Dark Mode' }}</span>
+          </div>
+        </button>
+      </div>
+
       <!-- Logout -->
       <!-- <div class="p-3 border-top border-secondary border-opacity-25">
         <button class="btn btn-ghost-dark text-danger-emphasis w-100 d-flex align-items-center justify-content-center gap-2 py-2 hover-bg-danger-subtle" @click="handleLogout">
@@ -66,10 +83,14 @@
     <!-- Main Content -->
     <div class="flex-grow-1 overflow-auto">
       <!-- Top Header -->
-      <header class="bg-white border-bottom border-light px-4 py-3 d-flex justify-content-between align-items-center sticky-top shadow-sm">
+      <header 
+        class="border-bottom px-4 py-3 d-flex justify-content-between align-items-center sticky-top shadow-sm"
+        :class="isDarkMode ? 'bg-dark' : 'bg-white border-light'"
+        :style="isDarkMode ? 'background-color: #1e293b; border-color: rgba(255,255,255,0.1) !important;' : ''"
+      >
         <div>
-          <h4 class="fw-bold text-dark mb-0">{{ currentViewTitle }}</h4>
-          <p class="text-muted mb-0 small">{{ currentViewSubtitle }}</p>
+          <h4 :class="isDarkMode ? 'fw-bold text-white mb-0' : 'fw-bold text-dark mb-0'">{{ currentViewTitle }}</h4>
+          <p :class="isDarkMode ? 'text-white-50 mb-0 small' : 'text-muted mb-0 small'">{{ currentViewSubtitle }}</p>
         </div>
         <div class="d-flex align-items-center gap-3">
           <button class="btn btn-light rounded-circle p-2 position-relative" @click="toggleNotifications">
@@ -223,17 +244,17 @@
           <!-- Right Column -->
           <div class="col-lg-4">
             <!-- Spending Summary -->
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-              <div class="card-header bg-white border-bottom border-light p-4">
-                <h5 class="fw-bold text-dark mb-0">Spending Summary</h5>
+            <div class="card border-0 shadow-sm rounded-4 h-100" :class="isDarkMode ? 'bg-dark' : ''" :style="isDarkMode ? 'background-color: #1e293b; border: 1px solid rgba(255,255,255,0.1) !important;' : ''">
+              <div class="card-header border-bottom p-4" :class="isDarkMode ? 'bg-dark' : 'bg-white border-light'" :style="isDarkMode ? 'background-color: #1e293b; border-color: rgba(255,255,255,0.1) !important;' : ''">
+                <h5 :class="isDarkMode ? 'fw-bold text-white mb-0' : 'fw-bold text-dark mb-0'">Spending Summary</h5>
               </div>
-              <div class="card-body p-4 d-flex flex-column align-items-center justify-content-center">
+              <div class="card-body p-4 d-flex flex-column align-items-center justify-content-center" :style="isDarkMode ? 'background-color: #1e293b;' : ''">
                 <div class="position-relative mb-4">
                   <!-- CSS Conic Gradient Pie Chart -->
                   <div class="pie-chart rounded-circle" :style="pieChartStyle"></div>
-                  <div class="position-absolute top-50 start-50 translate-middle bg-white rounded-circle d-flex flex-column align-items-center justify-content-center shadow-sm" style="width: 140px; height: 140px;">
-                    <span class="text-muted small">Total</span>
-                    <span class="fw-bold fs-4">₹{{ totalSpending.toLocaleString() }}</span>
+                  <div class="position-absolute top-50 start-50 translate-middle rounded-circle d-flex flex-column align-items-center justify-content-center shadow-sm" :class="isDarkMode ? 'bg-dark' : 'bg-white'" :style="isDarkMode ? 'background-color: #1e293b; width: 140px; height: 140px;' : 'width: 140px; height: 140px;'">
+                    <span :class="isDarkMode ? 'text-white-50 small' : 'text-muted small'">Total</span>
+                    <span :class="isDarkMode ? 'fw-bold fs-4 text-white' : 'fw-bold fs-4'">₹{{ totalSpending.toLocaleString() }}</span>
                   </div>
                 </div>
 
@@ -373,6 +394,7 @@
         </div>
       </div>
     </div>
+
   </div>
 </template>
 
@@ -391,8 +413,12 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Download,
-  X
+  X,
+  Wallet,
+  Moon,
+  Sun
 } from "lucide-vue-next";
+import { useDarkMode } from "@/composables/useDarkMode";
 
 export default {
   name: "Dashboard",
@@ -408,7 +434,17 @@ export default {
     ArrowDownLeft,
     ArrowUpRight,
     Download,
-    X
+    X,
+    Wallet,
+    Moon,
+    Sun
+  },
+  setup() {
+    const { isDarkMode, toggleDarkMode } = useDarkMode()
+    return {
+      isDarkMode,
+      toggleDarkMode
+    }
   },
   data() {
     return {
@@ -429,17 +465,14 @@ export default {
       currentView: 'dashboard',
       navItems: [
         { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-      { id: 'beneficiary', label: 'Beneficiaries', path: '/beneficiary', icon: Users },
-      { id: 'transfer', label: 'Transfer Money', path: '/transfer', icon: Send },
-      { id: 'history', label: 'Transactions', path: '/history', icon: FileText },
-      { id: 'chatbot', label: 'AI Assistant', path: '/chatbot', icon: MessageSquare }
+        { id: 'beneficiary', label: 'Beneficiaries', path: '/beneficiary', icon: Users },
+        { id: 'transfer', label: 'Transfer Money', path: '/transfer', icon: Send },
+        { id: 'history', label: 'Transactions', path: '/history', icon: FileText },
+        { id: 'payments', label: 'Payments', path: '/payments', icon: Wallet },
+        { id: 'chatbot', label: 'AI Assistant', path: '/chatbot', icon: MessageSquare }
       ]
       ,
-      spendingCategories: [
-        { name: 'Shopping', percentage: 45, color: '#0d6efd' },
-        { name: 'Bills', percentage: 30, color: '#6c757d' },
-        { name: 'Food', percentage: 25, color: '#e9ecef' }
-      ]
+      spendingCategories: []
     };
   },
   computed: {
@@ -473,12 +506,27 @@ export default {
           }));
       },
     totalSpending() {
+      // Use spending categories total if available, otherwise calculate from transactions
+      if (this.spendingCategories.length > 0) {
+        return Math.round(
+          this.spendingCategories.reduce((sum, cat) => sum + (cat.spent_amount || 0), 0)
+        );
+      }
       const debits = this.transactions
         .filter(t => t.type === 'debit')
         .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
       return Math.round(debits);
     },
     pieChartStyle() {
+      // Handle empty categories
+      if (!this.spendingCategories || this.spendingCategories.length === 0) {
+        return {
+          width: '200px',
+          height: '200px',
+          background: 'conic-gradient(#e9ecef 0% 100%)'
+        };
+      }
+      
       const colors = this.spendingCategories.map(c => c.color);
       const percentages = this.spendingCategories.map(c => c.percentage);
       
@@ -522,6 +570,7 @@ export default {
         this.fetchAllTransactions();
       } else if (this.currentView === 'dashboard') {
         this.fetchMiniStatement();
+        this.fetchSpendingCategories();
       }
     },
     handleLogout() {
@@ -572,6 +621,39 @@ export default {
         this.transactions = res.data;
       } catch (err) {
         console.error("Error fetching mini statement:", err);
+      }
+    },
+    async fetchSpendingCategories() {
+      try {
+        const res = await axios.get(
+          `http://127.0.0.1:5000/customer/spending-categories/${this.customerId}`
+        );
+        
+        // Color palette for categories
+        const colors = [
+          '#0d6efd', // Blue
+          '#198754', // Green
+          '#ffc107', // Yellow
+          '#dc3545', // Red
+          '#6c757d', // Gray
+          '#0dcaf0', // Cyan
+          '#fd7e14', // Orange
+          '#6f42c1', // Purple
+          '#20c997', // Teal
+          '#e9ecef'  // Light gray
+        ];
+        
+        // Map categories with colors
+        this.spendingCategories = res.data.categories.map((cat, index) => ({
+          name: cat.name,
+          percentage: cat.percentage,
+          spent_amount: cat.spent_amount,
+          color: colors[index % colors.length]
+        }));
+      } catch (err) {
+        console.error("Error fetching spending categories:", err);
+        // Fallback to empty array if error
+        this.spendingCategories = [];
       }
     },
     async downloadCSV() {
@@ -648,20 +730,35 @@ export default {
         alert('Please fill in all required fields');
         return;
       }
+
+      // Extract account number from the selected beneficiary
+      const accountNumber = typeof this.transfer.beneficiary_account === 'string' 
+        ? this.transfer.beneficiary_account 
+        : this.transfer.beneficiary_account.account_number;
+
       try {
-        await axios.post('http://127.0.0.1:5000/customer/transfer', {
+        const res = await axios.post('http://127.0.0.1:5000/customer/initiate-transfer', {
           customer_id: this.customerId,
-          beneficiary_account: this.transfer.beneficiary_account,
           amount: parseFloat(this.transfer.amount),
+          beneficiary_account: accountNumber,
           remarks: this.transfer.remarks
         });
-        alert('Transfer successful!');
-        this.transfer = { beneficiary_account: '', amount: '', remarks: '' };
-        this.fetchBalance();
-        this.fetchMiniStatement();
+
+        console.log("Initiate-transfer RESPONSE:", res.data);
+
+        this.$router.push({
+          name: "TransactionConfirm",
+          query: {
+            session_id: res.data.session_id,
+            customer_id: this.customerId,
+            amount: this.transfer.amount,
+            beneficiary_account: accountNumber,
+            remarks: this.transfer.remarks
+          }
+        });
       } catch (err) {
-        console.error('Error transferring funds:', err);
-        alert(err.response?.data?.message || 'Transfer failed');
+        console.error('Error initiating transfer:', err);
+        alert(err.response?.data?.message || 'Error initiating transfer');
       }
     },
 
@@ -760,6 +857,7 @@ export default {
     this.updateViewFromRoute();
     this.fetchBalance();
     this.fetchMiniStatement();
+    this.fetchSpendingCategories();
     this.fetchBeneficiaries();
     this.fetchNotifications();
     
@@ -974,4 +1072,30 @@ export default {
 .sidebar {
   flex-shrink: 0;
 }
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.hover-bg-light-transition {
+  transition: background-color 0.2s ease;
+}
+
+.hover-bg-light-transition:hover {
+  background-color: rgba(255,255,255,0.1) !important;
+}
+
+.modal-backdrop {
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
 </style>
+

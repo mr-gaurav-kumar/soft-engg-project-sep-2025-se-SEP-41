@@ -1,5 +1,5 @@
 <template>
-  <div class="d-flex min-vh-100 bg-light font-sans">
+  <div class="d-flex min-vh-100 font-sans" :class="isDarkMode ? 'bg-dark' : 'bg-light'" :style="isDarkMode ? 'background-color: #0f172a;' : ''">
     <!-- Sidebar -->
     <div class="sidebar d-flex flex-column shadow-sm" style="width: 280px; z-index: 1000; background-color: #1e293b;">
       <!-- Logo/Header -->
@@ -14,7 +14,11 @@
           </div>
         </div>
         
-        <div class="user-profile p-3 rounded-3 d-flex align-items-center gap-3" style="background-color: rgba(255,255,255,0.05);">
+        <div 
+          class="user-profile p-3 rounded-3 d-flex align-items-center gap-3 cursor-pointer hover-bg-light-transition" 
+          style="background-color: rgba(255,255,255,0.05);"
+          @click="router.push('/profile')"
+        >
           <div class="avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold">
             {{ customerInitials }}
           </div>
@@ -46,6 +50,19 @@
         </div>
       </div>
 
+      <!-- Dark Mode Toggle -->
+      <div class="px-3 py-2 border-top border-secondary border-opacity-25">
+        <button 
+          class="btn btn-ghost-dark text-white-50 w-100 d-flex align-items-center justify-content-between px-3 py-2 rounded-3 transition-all hover-text-white"
+          @click="toggleDarkMode"
+        >
+          <div class="d-flex align-items-center gap-3">
+            <component :is="isDarkMode ? Sun : Moon" :size="20" />
+            <span class="fw-medium">{{ isDarkMode ? 'Light Mode' : 'Dark Mode' }}</span>
+          </div>
+        </button>
+      </div>
+
       <!-- Logout -->
       <!-- <div class="p-3 border-top border-secondary border-opacity-25">
         <button class="btn btn-ghost-dark text-danger-emphasis w-100 d-flex align-items-center justify-content-center gap-2 py-2 hover-bg-danger-subtle" @click="handleLogout">
@@ -67,10 +84,14 @@
     <!-- Main Content -->
     <div class="flex-grow-1 overflow-auto">
       <!-- Top Header -->
-      <header class="bg-white border-bottom border-light px-4 py-3 d-flex justify-content-between align-items-center sticky-top shadow-sm">
+      <header 
+        class="border-bottom px-4 py-3 d-flex justify-content-between align-items-center sticky-top shadow-sm"
+        :class="isDarkMode ? 'bg-dark' : 'bg-white border-light'"
+        :style="isDarkMode ? 'background-color: #1e293b; border-color: rgba(255,255,255,0.1) !important;' : ''"
+      >
         <div>
-          <h4 class="fw-bold text-dark mb-0">Beneficiaries</h4>
-          <p class="text-muted mb-0 small">Manage your trusted contacts for easy transfers.</p>
+          <h4 :class="isDarkMode ? 'fw-bold text-white mb-0' : 'fw-bold text-dark mb-0'">Beneficiaries</h4>
+          <p :class="isDarkMode ? 'text-white-50 mb-0 small' : 'text-muted mb-0 small'">Manage your trusted contacts for easy transfers.</p>
         </div>
         <div class="d-flex align-items-center gap-3">
           <button class="btn btn-light rounded-circle p-2 position-relative">
@@ -180,6 +201,7 @@
         </div>
       </div>
     </div>
+
   </div>
 </template>
 
@@ -194,10 +216,15 @@ import {
   FileText, 
   MessageSquare, 
   LogOut, 
-  Bell
+  Bell,
+  Wallet,
+  Moon,
+  Sun
 } from 'lucide-vue-next'
+import { useDarkMode } from "@/composables/useDarkMode";
 
 const router = useRouter()
+const { isDarkMode, toggleDarkMode } = useDarkMode()
 
 const customerId = ref(Number(localStorage.getItem("customer_id")) || 1)
 const customerName = ref(localStorage.getItem("customer_name") || "Customer")
@@ -229,6 +256,7 @@ const navItems = [
   { id: 'beneficiary', label: 'Beneficiaries', path: '/beneficiary', icon: Users },
   { id: 'transfer', label: 'Transfer Money', path: '/transfer', icon: Send },
   { id: 'history', label: 'Transactions', path: '/history', icon: FileText },
+  { id: 'payments', label: 'Payments', path: '/payments', icon: Wallet },
   { id: 'chatbot', label: 'AI Assistant', path: '/chatbot', icon: MessageSquare },
 ]
 
@@ -289,6 +317,7 @@ const getStatusBadgeClass = (status) => {
   if (status === "Cooling Period") return "bg-warning-subtle text-warning"
   return "bg-danger-subtle text-danger"
 }
+
 
 onMounted(() => {
   fetchBeneficiaries()
@@ -369,5 +398,30 @@ onMounted(() => {
 .logout-btn:active {
   transform: scale(0.98);
   background: rgba(220, 53, 69, 0.16);
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.hover-bg-light-transition {
+  transition: background-color 0.2s ease;
+}
+
+.hover-bg-light-transition:hover {
+  background-color: rgba(255,255,255,0.1) !important;
+}
+
+.modal-backdrop {
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 </style>

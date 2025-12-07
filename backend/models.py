@@ -44,6 +44,9 @@ class KYC(db.Model):
     otp_expires_at = db.Column(db.DateTime, nullable=True)
 
     customer = db.relationship("Customer", backref="kyc_record")
+    
+    ai_validation_status = db.Column(db.String(50)) #newly added for ai fetures
+    ai_remarks = db.Column(db.String(500)) #newly added for ai fetures
 
 
 class OTPVerification(db.Model):
@@ -197,4 +200,6 @@ class Issue(db.Model):
     description = db.Column(db.String, nullable = False)
     assigned_date = db.Column(db.DateTime, default = datetime.now) # NEED TO CONFIRM on type
     status = db.Column(db.String, default = 'Pending') # Pending, Complete
+    
+    resolution_summary = db.Column(db.String(500))#newly added
 

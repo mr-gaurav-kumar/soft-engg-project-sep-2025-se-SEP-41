@@ -12,6 +12,9 @@ import KYCOTP from '@/components/KYCOTP.vue'
 import AIAssistent from '@/components/AIAssistent.vue'
 import ManagerPanel from '@/components/ManagerPanel.vue'
 import Payments from '@/components/Payments.vue'
+import Profile from '@/components/Profile.vue'
+import TransactionConfirm from '@/components/TransactionConfirm.vue'
+import TransactionConfirmBill from '@/components/TransactionConfirmBill.vue'
 
 const routes = [
   { path: '/', name: 'home', component: Home },
@@ -28,7 +31,10 @@ const routes = [
   { path: "/kyc-otp/:customer_id", component: KYCOTP },
   { path: "/chatbot", component: AIAssistent},
   { path: "/manager", component: ManagerPanel},
-  { path: "/payments", component: Payments}
+  { path: "/payments", name: "Payments", component: Payments },
+  { path: "/profile", name: "Profile", component: Profile },
+  { path: "/transaction-confirm", name: "TransactionConfirm", component: TransactionConfirm },
+  { path: "/transaction-confirm-bill", name: "TransactionConfirmBill", component: TransactionConfirmBill },
 ]
 
 const router = createRouter({

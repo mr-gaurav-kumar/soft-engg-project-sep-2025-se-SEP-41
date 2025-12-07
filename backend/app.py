@@ -14,9 +14,9 @@ from dotenv import load_dotenv
 import os
 from io import BytesIO
 from resources import api
+from ai_service import ai
 
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:8080"])
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///banking.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -25,6 +25,7 @@ app.config['SECRET_KEY'] = 'softwareengineeringproject'
 db.init_app(app)
 api.init_app(app)
 
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 load_dotenv()
 
@@ -195,18 +196,21 @@ def upload_kyc(customer_id):
     photo = request.files.get("photo")
     signature = request.files.get("signature")
 
-    path = "uploads/kyc/"
-    os.makedirs(path, exist_ok=True)
+    base_path = "uploads/kyc/"
+    os.makedirs(base_path, exist_ok=True)
 
-    aadhaar_file = os.path.join(path, aadhaar.filename)
-    pan_file = os.path.join(path, pan.filename)
-    photo_file = os.path.join(path, photo.filename)
-    signature_file = os.path.join(path, signature.filename)
+    def save_file(file, folder, prefix):
+        if file:
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(folder, f"{prefix}_{customer_id}_{filename}")
+            file.save(file_path)
+            return file_path
+        return None
 
-    aadhaar.save(aadhaar_file)
-    pan.save(pan_file)
-    photo.save(photo_file)
-    signature.save(signature_file)
+    aadhaar_file = save_file(aadhaar, base_path, "aadhaar")
+    pan_file = save_file(pan, base_path, "pan")
+    photo_file = save_file(photo, base_path, "photo")
+    signature_file = save_file(signature, base_path, "signature")
 
     kyc = KYC(
         customer_id=customer_id,
@@ -219,7 +223,7 @@ def upload_kyc(customer_id):
     db.session.add(kyc)
     db.session.commit()
 
-    return jsonify({"message": "KYC uploaded. Now verify with OTP."}), 200
+    return jsonify({"message": "KYC uploaded successfully. Now verify with OTP."}), 200
 
 ############################################ KYC OTP Route ##########################################
 
@@ -582,7 +586,7 @@ def list_beneficiaries(customer_id):
     return jsonify(result)
 
 
-####################################### Transfer Funds Route #######################################
+####################################### Update Banace Function #######################################
 
 def update_account_balance(account, amount, transaction_type):
     if transaction_type == "credit":
@@ -594,9 +598,7 @@ def update_account_balance(account, amount, transaction_type):
     
     db.session.commit()
 
-
-####################################### Update Banace Function #######################################
-
+####################################### Transfer Funds #######################################
 
 @app.route('/customer/transfer', methods=['POST'])
 def transfer_funds():
@@ -681,22 +683,105 @@ def transfer_funds():
         'credit_transaction_id': credit_txn.transaction_uuid if credit_txn else None
     }), 200
 
+####################################### Initiate Transfer Funds #######################################
+
+@app.route('/customer/initiate-transfer', methods=['POST'])
+def initiate_transfer():
+    data = request.get_json()
+    customer_id = data.get('customer_id')
+    # amount = data.get('amount')
+    amount = float(data.get('amount', 0))
+    beneficiary_account = data.get('beneficiary_account')
+
+    sender_acc = Account.query.filter_by(customer_id=customer_id).first()
+    if not sender_acc:
+        return jsonify({'message': 'Sender account not found'}), 404
+
+    if sender_acc.balance < amount:
+        return jsonify({'message': 'Insufficient balance'}), 400
+
+    # Generate OTP
+    otp = str(random.randint(100000, 999999))
+
+    # Save OTP in OTPVerification table
+    otp_entry = OTPVerification(
+        customer_id=customer_id,
+        otp_code=otp,
+        expires_at=datetime.utcnow() + timedelta(minutes=5),
+        is_used=False
+    )
+    db.session.add(otp_entry)
+    db.session.commit()
+
+    # Send OTP to customer email
+    customer = Customer.query.get(customer_id)
+    send_notification(
+        customer_id,
+        "Transaction OTP",
+        f"Your OTP for confirming the transfer is {otp}",
+        customer.email
+    )
+
+    return jsonify({
+        "message": "OTP sent successfully",
+        "session_id": otp_entry.id,
+        "customer_id": customer_id,
+        "amount": amount,
+        "beneficiary_account": beneficiary_account
+    }), 200
+
+####################################### Confirm Transfer Funds #######################################
+
+@app.route('/customer/confirm-transfer', methods=['POST'])
+def confirm_transfer():
+    data = request.get_json()
+
+    session_id = data.get("session_id")
+    entered_otp = data.get("otp")
+    txn_password = data.get("transaction_password")
+
+    customer_id = data.get("customer_id")
+    amount = data.get("amount")
+    beneficiary_account = data.get("beneficiary_account")
+
+    customer = Customer.query.get(customer_id)
+
+    # 1. Check Transaction Password (HASHED)
+    if not check_password_hash(customer.transaction_password, txn_password):
+        return jsonify({"message": "Invalid transaction password"}), 400
+
+    # 2. OTP Verification
+    otp_entry = OTPVerification.query.filter_by(
+        id=session_id,
+        otp_code=entered_otp,
+        is_used=False
+    ).first()
+
+    if not otp_entry:
+        return jsonify({"message": "Invalid OTP"}), 400
+
+    if datetime.utcnow() > otp_entry.expires_at:
+        return jsonify({"message": "OTP expired"}), 400
+
+    otp_entry.is_used = True
+    db.session.commit()
+
+    # 3. Call transfer logic
+    return transfer_funds()
 
 ############################### Bill Payments / Recharges / FASTag Top-up ##############################
 
 @app.route('/customer/bill-options', methods=['GET'])
 def bill_options():
-    """
-    Return mock biller & operator lists (used by frontend dropdowns).
-    In production, replace with real provider list or an external service.
-    """
     options = {
-        "bill_types": ["Electricity", "Water", "Gas", "Internet", "Property Tax"],
-        "electricity_providers": ["StateGrid", "CityPower", "Privault Energy"],
+        "bill_types": ["Electricity", "Gas", "Internet", "Transport", "Food", "Others"],
+        "electricity_providers": ["StateGrid", "CityPower"],
         "gas_providers": ["CityGas", "GovGas"],
         "internet_providers": ["NetPlus", "FiberNet"],
         "mobile_operators": ["Airtel", "Vodafone", "Jio", "BSNL"],
-        "dth_providers": ["DishTV", "TataSky", "SunDirect"]
+        "dth_providers": ["DishTV", "TataSky", "SunDirect"],
+        "transport_providers": ["OLA", "Uber", "Rapido", "Metro", "Others"],
+        "food_providers": ["Zomato", "Swiggy", "Zepto", "Others"]
     }
     return jsonify(options), 200
 
@@ -735,11 +820,11 @@ def _perform_debit(account, amount, description):
 ########################################## Pay Bill Route ######################################
 
 @app.route('/customer/pay-bill', methods=['POST'])
-def pay_bill():
+def pay_bill(data):
     """
     Pay a bill for a customer.
     """
-    data = request.get_json() or {}
+    # data = request.get_json() or {}
     customer_id = data.get('customer_id')
     bill_type = data.get('bill_type')
     biller = data.get('biller')
@@ -774,11 +859,11 @@ def pay_bill():
 ########################################## Reacharge Route ######################################
 
 @app.route('/customer/recharge', methods=['POST'])
-def recharge():
+def recharge(data):
     """
     Mobile / DTH recharge.
     """
-    data = request.get_json() or {}
+    # data = request.get_json() or {}
     customer_id = data.get('customer_id')
     recharge_type = data.get('recharge_type')
     operator = data.get('operator')
@@ -810,11 +895,11 @@ def recharge():
 ########################################## Fastatg Recharge ######################################
 
 @app.route('/customer/fastag-topup', methods=['POST'])
-def fastag_topup():
+def fastag_topup(data):
     """
     FASTag top-up.
     """
-    data = request.get_json() or {}
+    # data = request.get_json() or {}
     customer_id = data.get('customer_id')
     vehicle_number = data.get('vehicle_number')
     tag_id = data.get('tag_id', '')
@@ -845,6 +930,239 @@ def fastag_topup():
     status_code = 200 if ok else 400
     return jsonify(payload), status_code
 
+########################################## Initiate Pay Bill ######################################
+
+@app.route('/customer/initiate-pay-bill', methods=['POST'])
+def initiate_pay_bill():
+    data = request.get_json()
+    customer_id = data.get("customer_id")
+    amount = float(data.get("amount", 0))
+    bill_type = data.get("bill_type")
+    biller = data.get("biller")
+    bill_account = data.get("bill_account")
+
+    if not customer_id or amount <= 0 or not bill_type or not biller:
+        return jsonify({"message": "Missing required fields"}), 400
+
+    # Generate OTP
+    otp = str(random.randint(100000, 999999))
+    otp_entry = OTPVerification(
+        customer_id=customer_id,
+        otp_code=otp,
+        expires_at=datetime.utcnow() + timedelta(minutes=5),
+        is_used=False
+    )
+    db.session.add(otp_entry)
+    db.session.commit()
+
+    # Send OTP email
+    customer = Customer.query.get(customer_id)
+    send_notification(
+        customer_id,
+        "Transaction OTP",
+        f"Your OTP for confirming the bill payment is {otp}",
+        customer.email
+    )
+
+    return jsonify({
+        "message": "OTP sent successfully",
+        "session_id": otp_entry.id,
+        "customer_id": customer_id,
+        "amount": amount,
+        "bill_type": bill_type,
+        "biller": biller,
+        "bill_account": bill_account
+    }), 200
+
+####################################### Initiate Reacharge Route #######################################
+
+@app.route('/customer/initiate-recharge', methods=['POST'])
+def initiate_recharge():
+    data = request.get_json()
+    customer_id = data.get("customer_id")
+    amount = float(data.get("amount", 0))
+    recharge_type = data.get("recharge_type")
+    operator = data.get("operator")
+    number = data.get("number")
+
+    if not customer_id or amount <= 0 or not recharge_type or not operator or not number:
+        return jsonify({"message": "Missing required fields"}), 400
+
+    otp = str(random.randint(100000, 999999))
+    otp_entry = OTPVerification(
+        customer_id=customer_id,
+        otp_code=otp,
+        expires_at=datetime.utcnow() + timedelta(minutes=5),
+        is_used=False
+    )
+    db.session.add(otp_entry)
+    db.session.commit()
+
+    customer = Customer.query.get(customer_id)
+    send_notification(
+        customer_id,
+        "Transaction OTP",
+        f"Your OTP for confirming the recharge is {otp}",
+        customer.email
+    )
+
+    return jsonify({
+        "message": "OTP sent successfully",
+        "session_id": otp_entry.id,
+        "customer_id": customer_id,
+        "amount": amount,
+        "recharge_type": recharge_type,
+        "operator": operator,
+        "number": number
+    }), 200
+
+####################################### Initiate Fastag Route #######################################
+
+@app.route('/customer/initiate-fastag', methods=['POST'])
+def initiate_fastag():
+    data = request.get_json()
+    customer_id = data.get("customer_id")
+    amount = float(data.get("amount", 0))
+    vehicle_number = data.get("vehicle_number")
+    tag_id = data.get("tag_id", "")
+
+    if not customer_id or amount <= 0 or not vehicle_number:
+        return jsonify({"message": "Missing required fields"}), 400
+
+    otp = str(random.randint(100000, 999999))
+    otp_entry = OTPVerification(
+        customer_id=customer_id,
+        otp_code=otp,
+        expires_at=datetime.utcnow() + timedelta(minutes=5),
+        is_used=False
+    )
+    db.session.add(otp_entry)
+    db.session.commit()
+
+    customer = Customer.query.get(customer_id)
+    send_notification(
+        customer_id,
+        "Transaction OTP",
+        f"Your OTP for confirming FASTag top-up is {otp}",
+        customer.email
+    )
+
+    return jsonify({
+        "message": "OTP sent successfully",
+        "session_id": otp_entry.id,
+        "customer_id": customer_id,
+        "amount": amount,
+        "vehicle_number": vehicle_number,
+        "tag_id": tag_id
+    }), 200
+
+####################################### Confirm Bill Payment Route #######################################
+
+@app.route('/customer/confirm-pay-bill', methods=['POST'])
+def confirm_pay_bill():
+    data = request.get_json()
+    session_id = data.get("session_id")
+    entered_otp = data.get("otp")
+    txn_password = data.get("transaction_password")
+
+    payment_data = {
+        "customer_id": data.get("customer_id"),
+        "bill_type": data.get("bill_type"),
+        "biller": data.get("biller"),
+        "bill_account": data.get("bill_account"),
+        "amount": data.get("amount")
+    }
+
+    customer = Customer.query.get(payment_data["customer_id"])
+    if not check_password_hash(customer.transaction_password, txn_password):
+        return jsonify({"message": "Invalid transaction password"}), 400
+
+    otp_entry = OTPVerification.query.filter_by(
+        id=session_id,
+        otp_code=entered_otp,
+        is_used=False
+    ).first()
+    if not otp_entry:
+        return jsonify({"message": "Invalid OTP"}), 400
+    if datetime.utcnow() > otp_entry.expires_at:
+        return jsonify({"message": "OTP expired"}), 400
+
+    otp_entry.is_used = True
+    db.session.commit()
+
+    return pay_bill(payment_data)
+
+####################################### Confirm Recharge Route #######################################
+
+@app.route('/customer/confirm-recharge', methods=['POST'])
+def confirm_recharge():
+    data = request.get_json()
+    session_id = data.get("session_id")
+    entered_otp = data.get("otp")
+    txn_password = data.get("transaction_password")
+
+    recharge_data = {
+        "customer_id": data.get("customer_id"),
+        "recharge_type": data.get("recharge_type"),
+        "operator": data.get("operator"),
+        "number": data.get("number"),
+        "amount": data.get("amount")
+    }
+
+    customer = Customer.query.get(recharge_data["customer_id"])
+    if not check_password_hash(customer.transaction_password, txn_password):
+        return jsonify({"message": "Invalid transaction password"}), 400
+
+    otp_entry = OTPVerification.query.filter_by(
+        id=session_id,
+        otp_code=entered_otp,
+        is_used=False
+    ).first()
+    if not otp_entry:
+        return jsonify({"message": "Invalid OTP"}), 400
+    if datetime.utcnow() > otp_entry.expires_at:
+        return jsonify({"message": "OTP expired"}), 400
+
+    otp_entry.is_used = True
+    db.session.commit()
+
+    return recharge(recharge_data)
+
+####################################### Confirm Fastag Route #######################################
+
+@app.route('/customer/confirm-fastag', methods=['POST'])
+def confirm_fastag():
+    data = request.get_json()
+    session_id = data.get("session_id")
+    entered_otp = data.get("otp")
+    txn_password = data.get("transaction_password")
+
+    fastag_data = {
+        "customer_id": data.get("customer_id"),
+        "vehicle_number": data.get("vehicle_number"),
+        "tag_id": data.get("tag_id"),
+        "amount": data.get("amount")
+    }
+
+    customer = Customer.query.get(fastag_data["customer_id"])
+    if not check_password_hash(customer.transaction_password, txn_password):
+        return jsonify({"message": "Invalid transaction password"}), 400
+
+    otp_entry = OTPVerification.query.filter_by(
+        id=session_id,
+        otp_code=entered_otp,
+        is_used=False
+    ).first()
+    if not otp_entry:
+        return jsonify({"message": "Invalid OTP"}), 400
+    if datetime.utcnow() > otp_entry.expires_at:
+        return jsonify({"message": "OTP expired"}), 400
+
+    otp_entry.is_used = True
+    db.session.commit()
+
+    return fastag_topup(fastag_data)
+
 ########################################## Update SPending Category Function ######################################
 
 def update_spending_category(customer_id, amount, description):
@@ -868,6 +1186,48 @@ def update_spending_category(customer_id, amount, description):
     db.session.commit()
     
     return category_name
+
+########################################## Get Spending Categories Route ######################################
+
+@app.route('/customer/spending-categories/<int:customer_id>', methods=['GET'])
+def get_spending_categories(customer_id):
+    """Fetch spending categories with spent amounts for a customer."""
+    try:
+        categories = SpendingCategory.query.filter_by(customer_id=customer_id).all()
+        
+        if not categories:
+            return jsonify({
+                "categories": [],
+                "total_spent": 0
+            }), 200
+        
+        # Calculate total spent
+        total_spent = sum(cat.spent_amount for cat in categories)
+        
+        # Prepare response with percentages
+        category_list = []
+        for cat in categories:
+            percentage = (cat.spent_amount / total_spent * 100) if total_spent > 0 else 0
+            category_list.append({
+                "id": cat.id,
+                "name": cat.category_name.capitalize(),
+                "spent_amount": float(cat.spent_amount),
+                "budget_limit": float(cat.budget_limit) if cat.budget_limit else None,
+                "percentage": round(percentage, 1)
+            })
+        
+        # Sort by spent amount (descending)
+        category_list.sort(key=lambda x: x['spent_amount'], reverse=True)
+        
+        return jsonify({
+            "categories": category_list,
+            "total_spent": float(total_spent)
+        }), 200
+    except Exception as e:
+        print(f"Error fetching spending categories: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"message": f"Error fetching spending categories: {str(e)}"}), 500
 
 ###################################### DELETE A BENEFICIARY Route #####################################
 
@@ -981,7 +1341,6 @@ def get_pending_kyc():
 
     return jsonify(result), 200
 
-
 ################################# Approve Manager Route #####################################
 
 @app.route('/manager/kyc/approve/<int:kyc_id>', methods=['POST'])
@@ -1035,7 +1394,6 @@ def approve_kyc(kyc_id):
         "transaction_description": initial_transaction.description
     }), 200
 
-
 ################################# Reject KYC Request (Manager) Route ##################################
 
 @app.route('/manager/kyc/reject/<int:kyc_id>', methods=['POST'])
@@ -1075,43 +1433,94 @@ def serve_kyc_document(filename):
 
 @app.route("/customer/profile/<int:customer_id>", methods=["GET"])
 def get_customer_profile(customer_id):
-    customer = Customer.query.get(customer_id)
-    if not customer:
-        return jsonify({"message": "Customer not found"}), 404
+    try:
+        customer = Customer.query.get(customer_id)
+        if not customer:
+            return jsonify({"message": "Customer not found"}), 404
 
-    account = Account.query.filter_by(customer_id=customer_id).first()
+        account = Account.query.filter_by(customer_id=customer_id).first()
+        
+        # Query KYC using raw SQL to avoid columns that don't exist in DB
+        try:
+            from sqlalchemy import text
+            from datetime import datetime
+            kyc_result = db.session.execute(
+                text("SELECT status, aadhaar_file, pan_file, photo_file, signature_file, otp_verified, submitted_at, reviewed_at, reviewer_comment FROM kyc WHERE customer_id = :customer_id LIMIT 1"),
+                {"customer_id": customer_id}
+            ).fetchone()
+            
+            if kyc_result:
+                # Helper function to format datetime safely
+                def format_datetime(dt_value):
+                    if dt_value is None:
+                        return None
+                    if isinstance(dt_value, str):
+                        return dt_value  # Already a string, return as is
+                    if isinstance(dt_value, datetime):
+                        return dt_value.strftime("%Y-%m-%d %H:%M:%S")
+                    return str(dt_value)  # Fallback to string conversion
+                
+                kyc_data = {
+                    "status": kyc_result[0] if kyc_result[0] else "not_submitted",
+                    "aadhaar_file": kyc_result[1],
+                    "pan_file": kyc_result[2],
+                    "photo_file": kyc_result[3],
+                    "signature_file": kyc_result[4],
+                    "otp_verified": bool(kyc_result[5]) if kyc_result[5] is not None else False,
+                    "submitted_at": format_datetime(kyc_result[6]),
+                    "reviewed_at": format_datetime(kyc_result[7]),
+                    "reviewer_comment": kyc_result[8]
+                }
+            else:
+                kyc_data = {
+                    "status": "not_submitted",
+                    "aadhaar_file": None,
+                    "pan_file": None,
+                    "photo_file": None,
+                    "signature_file": None,
+                    "otp_verified": False,
+                    "submitted_at": None,
+                    "reviewed_at": None,
+                    "reviewer_comment": None
+                }
+        except Exception as kyc_error:
+            print(f"Error querying KYC: {str(kyc_error)}")
+            kyc_data = {
+                "status": "not_submitted",
+                "aadhaar_file": None,
+                "pan_file": None,
+                "photo_file": None,
+                "signature_file": None,
+                "otp_verified": False,
+                "submitted_at": None,
+                "reviewed_at": None,
+                "reviewer_comment": None
+            }
 
-    kyc = KYC.query.filter_by(customer_id=customer_id).first()
+        profile = {
+            "customer_id": customer.id,
+            "full_name": customer.full_name,
+            "email": customer.email,
+            "phone": customer.phone,
+            "is_active": customer.is_active,
+            "created_at": customer.created_at.strftime("%Y-%m-%d %H:%M:%S") if (customer.created_at is not None) else None,
 
-    profile = {
-        "customer_id": customer.id,
-        "full_name": customer.full_name,
-        "email": customer.email,
-        "phone": customer.phone,
-        "is_active": customer.is_active,
-        "created_at": customer.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "account": {
+                "account_number": account.account_number if account else None,
+                "account_type": account.account_type if account else None,
+                "balance": float(account.balance) if account and account.balance else None,
+                "created_at": account.created_at.strftime("%Y-%m-%d %H:%M:%S") if (account and account.created_at) else None
+            },
 
-        "account": {
-            "account_number": account.account_number if account else None,
-            "account_type": account.account_type if account else None,
-            "balance": account.balance if account else None,
-            "created_at": account.created_at.strftime("%Y-%m-%d %H:%M:%S") if account else None
-        },
-
-        "kyc": {
-            "status": kyc.status if kyc else "not_submitted",
-            "aadhaar_file": kyc.aadhaar_file if kyc else None,
-            "pan_file": kyc.pan_file if kyc else None,
-            "photo_file": kyc.photo_file if kyc else None,
-            "signature_file": kyc.signature_file if kyc else None,
-            "otp_verified": kyc.otp_verified if kyc else False,
-            "submitted_at": kyc.submitted_at.strftime("%Y-%m-%d %H:%M:%S") if kyc else None,
-            "reviewed_at": kyc.reviewed_at.strftime("%Y-%m-%d %H:%M:%S") if (kyc and kyc.reviewed_at) else None,
-            "reviewer_comment": kyc.reviewer_comment if kyc else None
+            "kyc": kyc_data
         }
-    }
 
-    return jsonify(profile), 200
+        return jsonify(profile), 200
+    except Exception as e:
+        print(f"Error in get_customer_profile: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"message": f"Internal server error: {str(e)}"}), 500
 
 ########################################### Get KYC File ############################################
 
@@ -1264,62 +1673,71 @@ def manager_login():
 
 def create_dummy_transactions():
     try:
-        txn_list = []
+        # --- 1. Ensure Customers & Accounts Exist ---
+        # User 1
+        email1 = "akanuragkumar4@gmail.com"
+        customer1 = Customer.query.filter_by(email=email1).first()
+        if not customer1:
+            customer1 = Customer(
+                full_name="Anurag Kumar",
+                email=email1,
+                phone="9999999991",
+                login_password=generate_password_hash("pass123"),
+                transaction_password=generate_password_hash("tx123"),
+                is_active=True
+            )
+            db.session.add(customer1)
+            db.session.commit()
+            
+            # Create Account for User 1
+            acc1 = Account(account_number=generate_account_number(), balance=10000.0, customer_id=customer1.id)
+            db.session.add(acc1)
+            db.session.commit()
 
-        customer1 = Customer.query.filter_by(email="akanuragkumar4@gmail.com").first()
-        customer2 = Customer.query.filter_by(email="tech@kvqaindia.com").first()
+        # User 2
+        email2 = "tech@kvqaindia.com"
+        customer2 = Customer.query.filter_by(email=email2).first()
+        if not customer2:
+            customer2 = Customer(
+                full_name="Tech Support",
+                email=email2,
+                phone="9999999992",
+                login_password=generate_password_hash("pass123"),
+                transaction_password=generate_password_hash("tx123"),
+                is_active=True
+            )
+            db.session.add(customer2)
+            db.session.commit()
+            
+            # Create Account for User 2
+            acc2 = Account(account_number=generate_account_number(), balance=15000.0, customer_id=customer2.id)
+            db.session.add(acc2)
+            db.session.commit()
 
+        # --- 2. Fetch Accounts (Refreshed) ---
         account1 = Account.query.filter_by(customer_id=customer1.id).first()
         account2 = Account.query.filter_by(customer_id=customer2.id).first()
 
-        txn_list.append(Transaction(
-            transaction_type="credit",
-            amount=10000,
-            description="Initial cash deposit",
-            account_id=account1.id
-        ))
+        # --- 3. Add Dummy Transactions (Designed for AI Features) ---
+        txn_list = []
 
-        txn_list.append(Transaction(
-            transaction_type="debit",
-            amount=850,
-            description="Swiggy Order Food",
-            account_id=account1.id
-        ))
+        # A. Normal Salary
+        txn_list.append(Transaction(transaction_type="credit", amount=50000, description="Salary Credited", account_id=account1.id))
+        
+        # B. Spending Coach Data (Food & Shopping)
+        txn_list.append(Transaction(transaction_type="debit", amount=850, description="Swiggy Order #101", account_id=account1.id))
+        txn_list.append(Transaction(transaction_type="debit", amount=2300, description="Amazon Electronics", account_id=account1.id))
+        txn_list.append(Transaction(transaction_type="debit", amount=450, description="Uber Ride to Office", account_id=account1.id))
 
-        txn_list.append(Transaction(
-            transaction_type="credit",
-            amount=15000,
-            description="Salary credited",
-            account_id=account2.id
-        ))
-
-        txn_list.append(Transaction(
-            transaction_type="debit",
-            amount=2300,
-            description="Amazon Electronics",
-            account_id=account2.id
-        ))
-
-        amount = 2000
-
-        txn_list.append(Transaction(
-            transaction_type="debit",
-            amount=amount,
-            description=f"Transfer to {account2.account_number}",
-            account_id=account1.id
-        ))
-
-        txn_list.append(Transaction(
-            transaction_type="credit",
-            amount=amount,
-            description=f"Received from {account1.account_number}",
-            account_id=account2.id
-        ))
+        # C. Dispute Drafter Data (Double Deduction Error)
+        # We add the SAME amount twice for Swiggy to simulate a "Double Deduction"
+        txn_list.append(Transaction(transaction_type="debit", amount=850, description="Swiggy Order #101 (Duplicate)", account_id=account1.id))
 
         for t in txn_list:
             db.session.add(t)
         db.session.commit()
 
+        # --- 4. Recalculate Balances ---
         for acc in [account1, account2]:
             txns = Transaction.query.filter_by(account_id=acc.id).all()
             balance = 0
@@ -1332,22 +1750,145 @@ def create_dummy_transactions():
         db.session.commit()
 
         return jsonify({
-            "message": "Dummy transactions created successfully!",
+            "message": "Dummy transactions created successfully! Users created if missing.",
             "user1_id": customer1.id,
-            "user2_id": customer2.id,
-            "user1_account": account1.account_number,
-            "user2_account": account2.account_number
+            "user1_email": customer1.email,
+            "user1_account": account1.account_number
         }), 200
 
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
-
 @app.route('/data_add', methods=['GET', 'POST'])
 def create_dummy_txn():
     return create_dummy_transactions()
 
+
+
+# ==============================================================================
+# AI FEATURES (Team 41 Integration)
+# ==============================================================================
+from ai_service import ai
+
+# --- Feature 1: Robust KYC Analyzer ---
+@app.route('/api/kyc/analyze/<int:kyc_id>', methods=['POST'])
+def analyze_kyc_document(kyc_id):
+    kyc_record = KYC.query.get(kyc_id)
+    if not kyc_record:
+        return jsonify({"message": "Record not found"}), 404
+    
+    # 1. Collect all 4 files (Robust check)
+    documents = {
+        "Aadhaar": kyc_record.aadhaar_file,
+        "PAN": kyc_record.pan_file,
+        "Photo": kyc_record.photo_file,
+        "Signature": kyc_record.signature_file
+    }
+
+    # 2. Run AI
+    result = ai.analyze_kyc(documents)
+    
+    # 3. Save
+    kyc_record.ai_remarks = result
+    kyc_record.ai_validation_status = "Valid" if "Valid" in result else "Review Needed"
+    db.session.commit()
+
+    return jsonify({
+        "ai_status": kyc_record.ai_validation_status,
+        "ai_remarks": result
+    })
+
+
+# --- Feature 2: Dispute Drafter (Smart Context) ---
+@app.route('/api/employee/draft-dispute/<int:issue_id>', methods=['GET'])
+def draft_dispute(issue_id):
+    issue = Issue.query.get(issue_id)
+    if not issue: return jsonify({"error": "Issue not found"}), 404
+
+    # 1. Fetch Account Info
+    account = Account.query.filter_by(customer_id=issue.customer_id).first()
+    recent_txns = []
+    current_balance = 0.0 # Default
+    
+    if account:
+        current_balance = account.balance  # <--- CAPTURE BALANCE
+        
+        # Get last 5 transactions
+        txns = Transaction.query.filter_by(account_id=account.id)\
+               .order_by(Transaction.timestamp.desc()).limit(5).all()
+        recent_txns = [
+            {"date": t.timestamp.strftime("%Y-%m-%d"), "desc": t.description, "amount": t.amount}
+            for t in txns
+        ]
+
+    # 2. Memory: Get past resolved issues
+    resolved = Issue.query.filter_by(status="Complete").all()
+    past_history = [i.resolution_summary for i in resolved if i.resolution_summary]
+
+    # 3. Generate (Passing Balance now)
+    draft = ai.draft_dispute_response(issue.description, recent_txns, past_history, current_balance)
+    return jsonify({"suggested_response": draft})
+
+# --- Feature 3: Spending Coach (Simple) ---
+@app.route('/api/customer/coach/<int:customer_id>', methods=['GET'])
+def spending_coach(customer_id):
+    account = Account.query.filter_by(customer_id=customer_id).first()
+    if not account: return jsonify({"error": "No account"}), 404
+
+    # 1. Get recent debits
+    txns = Transaction.query.filter_by(account_id=account.id)\
+           .filter(Transaction.transaction_type == 'debit')\
+           .order_by(Transaction.timestamp.desc()).limit(15).all()
+    
+    txn_data = [{"desc": t.description, "amount": t.amount} for t in txns]
+
+    # 2. AI Advice
+    advice = ai.spending_tips(txn_data)
+    return jsonify({"advice": advice})
+
+# --- Feature 4: Smart Banking Chatbot ---
+# --- Feature 4: Smart Banking Chatbot ---
+@app.route('/api/chat', methods=['POST'])
+def chat_bot():
+    data = request.get_json()
+    user_message = data.get('message', '')
+    user_id = data.get('user_id') 
+    
+    # 1. Fetch Context (Balance + Spending Habits + Account Details)
+    context_data = "User is a guest (No ID provided)."
+    
+    if user_id:
+        account = Account.query.filter_by(customer_id=user_id).first()
+        customer = Customer.query.get(user_id)
+        
+        if account and customer:
+            # A. Basic Account Details
+            # We hardcode IFSC because it's usually constant for a specific branch
+            account_info = (
+                f"Customer Name: {customer.full_name}\n"
+                f"Account Number: {account.account_number}\n"
+                f"IFSC Code: SEPB0001 (Sep Bank Main Branch)\n"
+                f"Account Type: {account.account_type}\n"
+                f"Current Balance: Rs. {account.balance}"
+            )
+            
+            # B. Get Spending Summary
+            txns = Transaction.query.filter_by(account_id=account.id)\
+                   .filter(Transaction.transaction_type == 'debit')\
+                   .order_by(Transaction.timestamp.desc()).limit(30).all()
+            
+            spending_text = "No recent transactions."
+            if txns:
+                spending_text = "Recent Transactions: " + ", ".join([f"{t.description} (Rs. {t.amount})" for t in txns])
+            
+            # Combine everything into one block for the AI (truncated for speed)
+            context_data = f"{account_info}\n\n{spending_text}"
+
+    # 2. Get AI Response
+    reply = ai.general_chat(user_message, context_data)
+    
+    return jsonify({"response": reply})
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()

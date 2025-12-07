@@ -1,5 +1,5 @@
 <template>
-  <div class="d-flex min-vh-100 bg-light font-sans">
+  <div class="d-flex min-vh-100 font-sans" :class="isDarkMode ? 'bg-dark' : 'bg-light'" :style="isDarkMode ? 'background-color: #0f172a;' : ''">
     <!-- Sidebar -->
     <div class="sidebar d-flex flex-column shadow-sm" style="width: 280px; z-index: 1000; background-color: #1e293b;">
       <!-- Logo/Header -->
@@ -14,7 +14,11 @@
           </div>
         </div>
         
-        <div class="user-profile p-3 rounded-3 d-flex align-items-center gap-3" style="background-color: rgba(255,255,255,0.05);">
+        <div 
+          class="user-profile p-3 rounded-3 d-flex align-items-center gap-3 cursor-pointer hover-bg-light-transition" 
+          style="background-color: rgba(255,255,255,0.05);"
+          @click="router.push('/profile')"
+        >
           <div class="avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold">
             {{ customerInitials }}
           </div>
@@ -46,6 +50,19 @@
         </div>
       </div>
 
+      <!-- Dark Mode Toggle -->
+      <div class="px-3 py-2 border-top border-secondary border-opacity-25">
+        <button 
+          class="btn btn-ghost-dark text-white-50 w-100 d-flex align-items-center justify-content-between px-3 py-2 rounded-3 transition-all hover-text-white"
+          @click="toggleDarkMode"
+        >
+          <div class="d-flex align-items-center gap-3">
+            <component :is="isDarkMode ? Sun : Moon" :size="20" />
+            <span class="fw-medium">{{ isDarkMode ? 'Light Mode' : 'Dark Mode' }}</span>
+          </div>
+        </button>
+      </div>
+
       <!-- Logout -->
       <div class="p-3 border-top border-secondary border-opacity-25">
         <button class="btn btn-ghost-dark text-danger-emphasis w-100 d-flex align-items-center justify-content-center gap-2 py-2 hover-bg-danger-subtle" @click="handleLogout">
@@ -58,10 +75,14 @@
     <!-- Main Content -->
     <div class="flex-grow-1 d-flex flex-column h-100 overflow-hidden">
       <!-- Header -->
-      <header class="bg-white border-bottom border-light px-4 py-3 d-flex justify-content-between align-items-center shadow-sm z-1">
+      <header 
+        class="border-bottom px-4 py-3 d-flex justify-content-between align-items-center shadow-sm z-1"
+        :class="isDarkMode ? 'bg-dark' : 'bg-white border-light'"
+        :style="isDarkMode ? 'background-color: #1e293b; border-color: rgba(255,255,255,0.1) !important;' : ''"
+      >
         <div>
-          <h4 class="fw-bold text-dark mb-0">AI Assistant</h4>
-          <p class="text-muted mb-0 small">Your personal financial advisor.</p>
+          <h4 :class="isDarkMode ? 'fw-bold text-white mb-0' : 'fw-bold text-dark mb-0'">AI Assistant</h4>
+          <p :class="isDarkMode ? 'text-white-50 mb-0 small' : 'text-muted mb-0 small'">Your personal financial advisor.</p>
         </div>
         <div class="d-flex align-items-center gap-2">
           <div class="badge bg-success-subtle text-success border border-success-subtle d-flex align-items-center gap-1 px-3 py-2 rounded-pill">
@@ -139,6 +160,23 @@
                 <small class="text-muted mt-1 mx-1" style="font-size: 0.75rem;">{{ msg.time }}</small>
               </div>
             </div>
+            
+            <!-- Loading Indicator -->
+            <div v-if="isLoading" class="d-flex gap-3">
+              <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm bg-white text-primary" style="width: 40px; height: 40px;">
+                <Bot :size="20" />
+              </div>
+              <div class="d-flex align-items-start">
+                <div class="p-3 shadow-sm bg-white text-dark rounded-top-right-3 rounded-bottom-3" style="border-radius: 1rem;">
+                  <div class="d-flex gap-2 align-items-center">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                      <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <span class="text-muted small">Thinking...</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
         </div>
@@ -166,10 +204,16 @@
               type="text"
               class="form-control border-0 bg-light ps-4"
               placeholder="Ask me anything about your finances..."
+              :disabled="isLoading"
             />
-            <button class="btn btn-primary px-4 d-flex align-items-center gap-2" @click="handleSendMessage">
-              <span>Send</span>
-              <Send :size="18" />
+            <button 
+              class="btn btn-primary px-4 d-flex align-items-center gap-2" 
+              @click="handleSendMessage"
+              :disabled="isLoading || !inputMessage.trim()"
+            >
+              <span v-if="!isLoading">Send</span>
+              <span v-else class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+              <Send v-if="!isLoading" :size="18" />
             </button>
           </div>
           <div class="text-center mt-2">
@@ -178,12 +222,14 @@
         </div>
       </div>
     </div>
+
   </div>
 </template>
 
 <script>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
 import { 
   LayoutDashboard, 
   Users, 
@@ -194,10 +240,12 @@ import {
   Bot, 
   User, 
   Coffee, 
-  TrendingDown 
+  TrendingDown,
+  Wallet,
+  Moon,
+  Sun
 } from 'lucide-vue-next'
-
-import axios from 'axios'
+import { useDarkMode } from "@/composables/useDarkMode";
 
 export default {
   name: 'AIAssistant',
@@ -211,10 +259,13 @@ export default {
     Bot,
     User,
     Coffee,
-    TrendingDown
+    TrendingDown,
+    Moon,
+    Sun
   },
   setup() {
     const router = useRouter()
+    const { isDarkMode, toggleDarkMode } = useDarkMode()
     const customerName = localStorage.getItem("customer_name") || "Customer"
     
     const customerInitials = computed(() => {
@@ -231,6 +282,7 @@ export default {
       { id: 'beneficiary', label: 'Beneficiaries', path: '/beneficiary', icon: Users },
       { id: 'transfer', label: 'Transfer Money', path: '/transfer', icon: Send },
       { id: 'history', label: 'Transactions', path: '/history', icon: FileText },
+      { id: 'payments', label: 'Payments', path: '/payments', icon: Wallet },
       { id: 'chatbot', label: 'AI Assistant', path: '/chatbot', icon: MessageSquare },
     ]
 
@@ -238,22 +290,32 @@ export default {
       {
         id: 1,
         type: 'bot',
-        text: "Hello! I'm your AI banking assistant. How can I help you today?",
-        time: '10:00 AM'
+        text: "Hello! I'm your personal spending coach and banking assistant. How can I help you today?",
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       },
       {
         id: 2,
         type: 'bot',
-        text: 'I can help you with account information, transaction queries, financial advice, and more.',
-        time: '10:00 AM'
+        text: 'I can analyze your spending patterns, provide financial advice, answer account questions, and help you make better financial decisions. Try asking me about your spending habits!',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
     ])
 
     const inputMessage = ref('')
-    const quickActions = ['Check my balance', 'Analyze my spending', 'Food spending tips', 'Monthly budget advice']
+    const customerId = Number(localStorage.getItem('customer_id'))
+    const quickActions = ['Analyze my spending', 'Food spending tips', 'Travel spending advice', 'Shopping habits']
+    const isLoading = ref(false)
+
+    // Check if message is asking for spending analysis
+    function isSpendingQuery(message) {
+      const spendingKeywords = ['spending', 'expense', 'expenditure', 'budget', 'spend', 'food', 'travel', 'shopping', 'habits', 'analyze', 'analysis']
+      const lowerMsg = message.toLowerCase()
+      return spendingKeywords.some(keyword => lowerMsg.includes(keyword))
+    }
 
     async function handleSendMessage() {
-      if (!inputMessage.value.trim()) return
+      if (!inputMessage.value.trim() || isLoading.value) return
+      
       const userMsg = {
         id: messages.value.length + 1,
         type: 'user',
@@ -261,42 +323,69 @@ export default {
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
 
+      messages.value.push(userMsg)
+      inputMessage.value = ''
+      isLoading.value = true
+
       let botResponse
+      const nextId = messages.value.length + 1
       
       try {
-        const res = await axios.post('http://localhost:5000/coach/ask', {
-          user_id: localStorage.getItem('customer_id'), // Ensure customer_id is stored
-          query: inputMessage.value
-        })
-
-        botResponse = {
-          id: messages.value.length + 2,
-          type: 'bot',
-          text: res.data.response,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        // Check if it's a spending-related query
+        if (isSpendingQuery(userMsg.text) && customerId) {
+          // Use spending coach endpoint
+          const res = await axios.get(`http://127.0.0.1:5000/api/customer/coach/${customerId}`)
+          botResponse = {
+            id: nextId,
+            type: 'bot',
+            text: res.data.advice || "I've analyzed your spending patterns. Here are some insights...",
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }
+        } else {
+          // Use general chat endpoint
+          const res = await axios.post('http://127.0.0.1:5000/api/chat', {
+            message: userMsg.text,
+            user_id: customerId || null
+          })
+          botResponse = {
+            id: nextId,
+            type: 'bot',
+            text: res.data.response || "I'm here to help with your banking needs.",
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }
         }
       } catch (error) {
+        console.error('AI Assistant Error:', error)
         botResponse = {
-          id: messages.value.length + 2,
+          id: nextId,
           type: 'bot',
-          text: "Sorry, I'm having trouble connecting to the server.",
+          text: error.response?.data?.error || "Sorry, I'm having trouble connecting to the server. Please try again.",
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       }
 
-      messages.value.push(userMsg, botResponse)
-      inputMessage.value = ''
+      messages.value.push(botResponse)
+      isLoading.value = false
+      
+      // Auto-scroll to bottom
+      setTimeout(() => {
+        const chatArea = document.querySelector('.overflow-auto')
+        if (chatArea) {
+          chatArea.scrollTop = chatArea.scrollHeight
+        }
+      }, 100)
     }
 
-    function handleQuickAction(action) {
+    async function handleQuickAction(action) {
       inputMessage.value = action
-      handleSendMessage()
+      await handleSendMessage()
     }
 
     const handleLogout = () => {
       localStorage.clear()
       router.push('/')
     }
+
 
     return { 
       navItems, 
@@ -307,7 +396,10 @@ export default {
       handleQuickAction,
       handleLogout,
       customerName,
-      customerInitials
+      customerInitials,
+      isLoading,
+      isDarkMode,
+      toggleDarkMode
     }
   },
   methods: {
@@ -369,5 +461,30 @@ export default {
 
 .hover-bg-light:hover {
   background-color: #f8f9fa !important;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.hover-bg-light-transition {
+  transition: background-color 0.2s ease;
+}
+
+.hover-bg-light-transition:hover {
+  background-color: rgba(255,255,255,0.1) !important;
+}
+
+.modal-backdrop {
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <div class="d-flex min-vh-100 bg-light font-sans">
+  <div class="d-flex min-vh-100 font-sans" :class="isDarkMode ? 'bg-dark' : 'bg-light'" :style="isDarkMode ? 'background-color: #0f172a;' : ''">
     <!-- Sidebar -->
     <div class="sidebar d-flex flex-column shadow-sm" style="width: 280px; z-index: 1000; background-color: #1e293b;">
       <!-- Logo/Header -->
@@ -14,7 +14,11 @@
           </div>
         </div>
         
-        <div class="user-profile p-3 rounded-3 d-flex align-items-center gap-3" style="background-color: rgba(255,255,255,0.05);">
+        <div 
+          class="user-profile p-3 rounded-3 d-flex align-items-center gap-3 cursor-pointer hover-bg-light-transition" 
+          style="background-color: rgba(255,255,255,0.05);"
+          @click="$router.push('/profile')"
+        >
           <div class="avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold">
             {{ getInitials(customerName) }}
           </div>
@@ -34,7 +38,7 @@
             @click="navigate(item.path)"
             :class="[
               'btn text-start d-flex align-items-center gap-3 px-3 py-2 rounded-3 transition-all',
-              '/payments' === item.path
+              $route.path === item.path
                 ? 'bg-primary text-white shadow-sm'
                 : 'btn-ghost-dark text-white-50 hover-text-white'
             ]"
@@ -43,6 +47,19 @@
             <span class="fw-medium">{{ item.label }}</span>
           </button>
         </div>
+      </div>
+
+      <!-- Dark Mode Toggle -->
+      <div class="px-3 py-2 border-top border-secondary border-opacity-25">
+        <button 
+          class="btn btn-ghost-dark text-white-50 w-100 d-flex align-items-center justify-content-between px-3 py-2 rounded-3 transition-all hover-text-white"
+          @click="toggleDarkMode"
+        >
+          <div class="d-flex align-items-center gap-3">
+            <component :is="isDarkMode ? Sun : Moon" :size="20" />
+            <span class="fw-medium">{{ isDarkMode ? 'Light Mode' : 'Dark Mode' }}</span>
+          </div>
+        </button>
       </div>
 
        <!-- Logout -->
@@ -60,10 +77,14 @@
     <!-- Main Content -->
     <div class="flex-grow-1 overflow-auto">
       <!-- Top Header -->
-      <header class="bg-white border-bottom border-light px-4 py-3 d-flex justify-content-between align-items-center sticky-top shadow-sm">
+      <header 
+        class="border-bottom px-4 py-3 d-flex justify-content-between align-items-center sticky-top shadow-sm"
+        :class="isDarkMode ? 'bg-dark' : 'bg-white border-light'"
+        :style="isDarkMode ? 'background-color: #1e293b; border-color: rgba(255,255,255,0.1) !important;' : ''"
+      >
         <div>
-          <h4 class="fw-bold text-dark mb-0">Payments & Recharges</h4>
-          <p class="text-muted mb-0 small">Manage your utility bills, recharges, and Fastag top-ups.</p>
+          <h4 :class="isDarkMode ? 'fw-bold text-white mb-0' : 'fw-bold text-dark mb-0'">Payments & Recharges</h4>
+          <p :class="isDarkMode ? 'text-white-50 mb-0 small' : 'text-muted mb-0 small'">Manage your utility bills, recharges, and Fastag top-ups.</p>
         </div>
         <div class="d-flex align-items-center gap-3">
           <button class="btn btn-light rounded-circle p-2 position-relative">
@@ -172,8 +193,8 @@
              <div class="card border-0 shadow-sm rounded-4 h-100">
                 <div class="card-header bg-white border-bottom border-light p-4">
                   <div class="d-flex align-items-center gap-3">
-                     <div class="rounded-circle bg-warning-subtle text-warning p-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                        <Zap :size="24" />
+                     <div class="rounded-circle bg-warning-subtle text-warning d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; overflow: hidden;">
+                        <img src="/Fastag-logo.png" alt="FASTag" style="width: 42px; height: 42px; object-fit: contain;" />
                      </div>
                      <h5 class="fw-bold text-dark mb-0">FASTag</h5>
                   </div>
@@ -208,6 +229,7 @@
 
       </div>
     </div>
+
   </div>
 </template>
 
@@ -222,8 +244,12 @@ import {
   LogOut, 
   Bell,
   Smartphone,
-  Zap
+  Zap,
+  Wallet,
+  Moon,
+  Sun
 } from 'lucide-vue-next';
+import { useDarkMode } from "@/composables/useDarkMode";
 
 export default {
   name: "Payments",
@@ -236,7 +262,17 @@ export default {
     LogOut,
     Bell,
     Smartphone,
-    Zap
+    Zap,
+    Wallet,
+    Moon,
+    Sun
+  },
+  setup() {
+    const { isDarkMode, toggleDarkMode } = useDarkMode()
+    return {
+      isDarkMode,
+      toggleDarkMode
+    }
   },
   data() {
     return {
@@ -249,6 +285,9 @@ export default {
         internet_providers: [],
         mobile_operators: [],
         dth_providers: [],
+        transport_providers: [],
+        food_providers: [],
+        others_providers: [],
       },
       bill: { bill_type: "", biller: "", bill_account: "", amount: "" },
       rechargeData: {
@@ -263,8 +302,8 @@ export default {
         { id: 'beneficiary', label: 'Beneficiaries', path: '/beneficiary', icon: Users },
         { id: 'transfer', label: 'Transfer Money', path: '/transfer', icon: Send },
         { id: 'history', label: 'Transactions', path: '/history', icon: FileText },
-        { id: 'payments', label: 'Payments', path: '/payments', icon: MessageSquare }, // Using MessageSquare as placeholder or import another
-        // { id: 'chatbot', label: 'AI Assistant', path: '/chatbot', icon: MessageSquare } 
+        { id: 'payments', label: 'Payments', path: '/payments', icon: Wallet },
+        { id: 'chatbot', label: 'AI Assistant', path: '/chatbot', icon: MessageSquare }
       ]
     };
   },
@@ -295,57 +334,114 @@ export default {
     getBillerList(type) {
       switch (type) {
         case "Electricity":
-          return this.billOptions.electricity_providers;
+          return this.billOptions.electricity_providers || [];
         case "Gas":
-          return this.billOptions.gas_providers;
+          return this.billOptions.gas_providers || [];
         case "Internet":
-          return this.billOptions.internet_providers;
+          return this.billOptions.internet_providers || [];
+        case "Transport":
+          return this.billOptions.transport_providers || [];
+        case "Food":
+          return this.billOptions.food_providers || [];
+        case "Others":
+          return this.billOptions.others_providers || [];
         default:
           return [];
       }
     },
     async payBill() {
+      if (!this.bill.bill_type || !this.bill.biller || !this.bill.amount) {
+        alert("Please fill all required fields");
+        return;
+      }
+
       try {
-        const res = await axios.post("http://127.0.0.1:5000/customer/pay-bill", {
+        // Step 1: Initiate Bill Payment
+        const res = await axios.post("http://127.0.0.1:5000/customer/initiate-pay-bill", {
           customer_id: this.customerId,
           bill_type: this.bill.bill_type,
           biller: this.bill.biller,
-          amount: this.bill.amount,
           bill_account: this.bill.bill_account,
+          amount: this.bill.amount
         });
-        alert(res.data.message);
-        this.bill = { bill_type: "", biller: "", bill_account: "", amount: "" }; // Reset form
+
+        // Redirect to TransactionConfirmBill with required data
+        this.$router.push({
+          name: "TransactionConfirmBill",
+          query: {
+            session_id: res.data.session_id,
+            type: "pay-bill",
+            customer_id: this.customerId,
+            bill_type: this.bill.bill_type,
+            biller: this.bill.biller,
+            bill_account: this.bill.bill_account,
+            amount: this.bill.amount
+          }
+        });
       } catch (err) {
-        alert("Bill payment failed");
+        alert(err.response?.data?.message || "Error initiating bill payment");
       }
     },
     async recharge() {
+      if (!this.rechargeData.recharge_type || !this.rechargeData.operator || !this.rechargeData.number || !this.rechargeData.amount) {
+        alert("Please fill all required fields");
+        return;
+      }
+
       try {
-        const res = await axios.post("http://127.0.0.1:5000/customer/recharge", {
+        // Step 1: Initiate Recharge
+        const res = await axios.post("http://127.0.0.1:5000/customer/initiate-recharge", {
           customer_id: this.customerId,
           recharge_type: this.rechargeData.recharge_type,
           operator: this.rechargeData.operator,
           number: this.rechargeData.number,
-          amount: this.rechargeData.amount,
+          amount: this.rechargeData.amount
         });
-        alert(res.data.message);
-        this.rechargeData = { recharge_type: "", operator: "", number: "", amount: "" }; // Reset form
+
+        this.$router.push({
+          name: "TransactionConfirmBill",
+          query: {
+            session_id: res.data.session_id,
+            type: "recharge",
+            customer_id: this.customerId,
+            recharge_type: this.rechargeData.recharge_type,
+            operator: this.rechargeData.operator,
+            number: this.rechargeData.number,
+            amount: this.rechargeData.amount
+          }
+        });
       } catch (err) {
-         alert("Recharge failed");
+        alert(err.response?.data?.message || "Error initiating recharge");
       }
     },
     async fastagTopup() {
+      if (!this.fastag.vehicle_number || !this.fastag.amount) {
+        alert("Please fill all required fields");
+        return;
+      }
+
       try {
-        const res = await axios.post("http://127.0.0.1:5000/customer/fastag-topup", {
+        // Step 1: Initiate FASTag Top-up
+        const res = await axios.post("http://127.0.0.1:5000/customer/initiate-fastag", {
           customer_id: this.customerId,
           vehicle_number: this.fastag.vehicle_number,
           tag_id: this.fastag.tag_id,
-          amount: this.fastag.amount,
+          amount: this.fastag.amount
         });
-        alert(res.data.message);
-        this.fastag = { vehicle_number: "", tag_id: "", amount: "" }; // Reset form
+
+        this.$router.push({
+          name: "TransactionConfirmBill",
+          query: {
+            session_id: res.data.session_id,
+            type: "fastag",
+            customer_id: this.customerId,
+            vehicle_number: this.fastag.vehicle_number,
+            tag_id: this.fastag.tag_id,
+            amount: this.fastag.amount
+          }
+        });
       } catch (err) {
-        alert("FASTag top-up failed");
+        alert(err.response?.data?.message || "Error initiating FASTag top-up");
       }
     },
   },
@@ -444,5 +540,30 @@ export default {
 .logout-btn:active {
   transform: scale(0.98);
   background: rgba(220, 53, 69, 0.16);
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.hover-bg-light-transition {
+  transition: background-color 0.2s ease;
+}
+
+.hover-bg-light-transition:hover {
+  background-color: rgba(255,255,255,0.1) !important;
+}
+
+.modal-backdrop {
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 </style>
