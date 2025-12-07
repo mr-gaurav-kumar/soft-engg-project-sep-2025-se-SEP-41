@@ -246,7 +246,9 @@ def send_kyc_otp(customer_id):
 
     send_email(kyc.customer.email, "Your KYC OTP", f"Your OTP is: {otp}")
 
-    return jsonify({"message": "KYC OTP sent"}), 200
+    response = jsonify({"message": "KYC OTP sent"})
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response, 200
 
 ######################################## KYC Verify OTP Route ##########################################
 
@@ -271,9 +273,11 @@ def verify_kyc_otp(customer_id):
         "Your KYC OTP has been successfully verified. KYC will now be reviewed by the manager."
     )
 
-    return jsonify({
+    response = jsonify({
         "message": "OTP Verified. KYC is now pending manager approval."
-    }), 200
+    })
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response, 200
 
 ############################################ Login Route ##########################################
 
@@ -306,7 +310,9 @@ def login():
 
     send_email(customer.email, "Login OTP", f"Your login OTP is: {otp}")
 
-    return jsonify({"message": "OTP sent"}), 200
+    response = jsonify({"message": "OTP sent"})
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response, 200
 
 ############################################ Login Verify OTP Route ##########################################
 
@@ -337,14 +343,16 @@ def verify_login_otp():
     otp_entry.is_used = True
     db.session.commit()
 
-    return jsonify({
+    response = jsonify({
         "message": "Login successful",
         "customer": {
             "id": customer.id,
             "full_name": customer.full_name,
             "account_number": account.account_number
         }
-    }), 200
+    })
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response, 200
 
 ###################################### Forgot Password Route ##########################################
 

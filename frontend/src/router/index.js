@@ -23,6 +23,7 @@ import Payments from '@/components/Payments.vue'
 import Profile from '@/components/Profile.vue'
 import TransactionConfirm from '@/components/TransactionConfirm.vue'
 import TransactionConfirmBill from '@/components/TransactionConfirmBill.vue'
+import CustomerDisputes from '@/components/CustomerDisputes.vue'
 
 const routes = [
   // Customer routes (flat structure - preserved)
@@ -41,6 +42,7 @@ const routes = [
   { path: "/chatbot", component: AIAssistent},
   { path: "/payments", name: "Payments", component: Payments },
   { path: "/profile", name: "Profile", component: Profile },
+  { path: "/disputes", name: "CustomerDisputes", component: CustomerDisputes },
   { path: "/transaction-confirm", name: "TransactionConfirm", component: TransactionConfirm },
   { path: "/transaction-confirm-bill", name: "TransactionConfirmBill", component: TransactionConfirmBill },
   

@@ -1,183 +1,212 @@
-<!-- <template>
-  <v-container>
-    <v-card class="pa-5 mx-auto" max-width="400">
-      <v-card-title>Register</v-card-title>
-      <v-card-text>
-        <v-text-field label="Full Name" v-model="form.full_name" />
-        <v-text-field label="Email" v-model="form.email" />
-        <v-text-field label="Phone" v-model="form.phone" />
-        <v-text-field label="Password" v-model="form.password" type="password" />
-      </v-card-text>
-      <v-card-actions>
-        <v-btn color="primary" @click="register">Register</v-btn>
-      </v-card-actions>
-      <v-alert v-if="msg" type="info" class="mt-2">{{ msg }}</v-alert>
-    </v-card>
-  </v-container>
-</template>
-
-<script setup>
-import api from "../services/api";
-import { ref } from "vue";
-
-const form = ref({ full_name: "", email: "", phone: "", password: "" });
-const msg = ref("");
-
-const register = async () => {
-  const res = await api.post("/register", form.value);
-  msg.value = res.data.message;
-};
-</script> -->
-
-
 <template>
-  <v-container>
-    <v-card class="pa-5 mx-auto" :max-width="form.role === 'customer' ? '500' : '450'">
-      <v-card-title class="text-h5 mb-4">
-        {{ form.role === 'customer' ? 'Register Customer' : form.role === 'employee' ? 'Register Employee' : 'Register Manager' }}
-      </v-card-title>
+  <div class="d-flex min-vh-100 align-items-center justify-content-center bg-light font-sans py-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+          <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
+            <!-- Header -->
+            <div class="card-header bg-primary bg-gradient text-white text-center py-4 border-0">
+              <div class="d-flex align-items-center justify-content-center gap-3 mb-2">
+                <div class="logo-box bg-white bg-opacity-20 text-white rounded-3 d-flex align-items-center justify-content-center shadow-sm" style="width: 50px; height: 50px;">
+                  <span class="fw-bold fs-4">S</span>
+                </div>
+                <div>
+                  <h4 class="fw-bold mb-0">Sep Bank</h4>
+                  <small class="opacity-75">Premium Banking</small>
+                </div>
+              </div>
+            </div>
 
-      <v-card-text>
-        <!-- Role Selection -->
-        <v-select
-          v-model="form.role"
-          :items="roleOptions"
-          label="Register as"
-          item-title="text"
-          item-value="value"
-          @update:model-value="onRoleChange"
-          class="mb-4"
-        ></v-select>
+            <!-- Body -->
+            <div class="card-body p-4">
+              <h5 class="fw-bold text-dark mb-4 text-center">
+                {{ form.role === 'customer' ? 'Register Customer' : form.role === 'employee' ? 'Register Employee' : 'Register Manager' }}
+              </h5>
 
-        <!-- Customer Registration Fields -->
-        <template v-if="form.role === 'customer' || !form.role">
-          <v-text-field 
-            label="Full Name" 
-            v-model="form.full_name" 
-            :rules="[rules.required]"
-            class="mb-2"
-          />
-          <v-text-field 
-            label="Email" 
-            v-model="form.email" 
-            type="email"
-            :rules="[rules.required, rules.email]"
-            class="mb-2"
-          />
-          <v-text-field 
-            label="Phone" 
-            v-model="form.phone" 
-            :rules="[rules.required]"
-            class="mb-2"
-          />
-          <v-text-field 
-            label="Login Password" 
-            type="password" 
-            v-model="form.login_password"
-            :rules="[rules.required, rules.minLength]"
-            class="mb-2"
-          />
-          <v-text-field 
-            label="Transaction Password" 
-            type="password" 
-            v-model="form.transaction_password"
-            :rules="[rules.required, rules.minLength]"
-            class="mb-2"
-          />
-        </template>
+              <!-- Role Selection -->
+              <div class="mb-4">
+                <label class="form-label fw-medium text-secondary">Register as</label>
+                <select 
+                  v-model="form.role" 
+                  @change="onRoleChange"
+                  class="form-select form-select-lg border-2"
+                >
+                  <option value="customer">Customer</option>
+                  <option value="employee">Employee</option>
+                  <option value="manager">Manager</option>
+                </select>
+              </div>
 
-        <!-- Employee Registration Fields -->
-        <template v-else-if="form.role === 'employee'">
-          <v-text-field 
-            label="Full Name" 
-            v-model="form.name" 
-            :rules="[rules.required]"
-            class="mb-2"
-          />
-          <v-text-field 
-            label="Email" 
-            v-model="form.email" 
-            type="email"
-            :rules="[rules.required, rules.email]"
-            class="mb-2"
-          />
-          <v-text-field 
-            label="Contact Number" 
-            v-model="form.contact_number" 
-            :rules="[rules.required]"
-            class="mb-2"
-          />
-          <v-text-field 
-            label="Password" 
-            type="password" 
-            v-model="form.password"
-            :rules="[rules.required, rules.minLength]"
-            class="mb-2"
-          />
-          <v-text-field 
-            label="Manager ID" 
-            v-model="form.manager_id" 
-            type="number"
-            :rules="[rules.required]"
-            hint="Enter the ID of the manager who will supervise you"
-            persistent-hint
-            class="mb-2"
-          />
-        </template>
+              <!-- Customer Registration Fields -->
+              <template v-if="form.role === 'customer' || !form.role">
+                <div class="mb-3">
+                  <label class="form-label fw-medium text-secondary">Full Name</label>
+                  <input 
+                    type="text" 
+                    v-model="form.full_name" 
+                    class="form-control form-control-lg border-2"
+                    placeholder="Enter your full name"
+                  />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label fw-medium text-secondary">Email</label>
+                  <input 
+                    type="email" 
+                    v-model="form.email" 
+                    class="form-control form-control-lg border-2"
+                    placeholder="Enter your email"
+                  />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label fw-medium text-secondary">Phone</label>
+                  <input 
+                    type="tel" 
+                    v-model="form.phone" 
+                    class="form-control form-control-lg border-2"
+                    placeholder="Enter your phone number"
+                  />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label fw-medium text-secondary">Login Password</label>
+                  <input 
+                    type="password" 
+                    v-model="form.login_password" 
+                    class="form-control form-control-lg border-2"
+                    placeholder="Enter login password (min 6 characters)"
+                  />
+                </div>
+                <div class="mb-4">
+                  <label class="form-label fw-medium text-secondary">Transaction Password</label>
+                  <input 
+                    type="password" 
+                    v-model="form.transaction_password" 
+                    class="form-control form-control-lg border-2"
+                    placeholder="Enter transaction password (min 6 characters)"
+                  />
+                </div>
+              </template>
 
-        <!-- Manager Registration Fields -->
-        <template v-else-if="form.role === 'manager'">
-          <v-text-field 
-            label="Full Name" 
-            v-model="form.name" 
-            :rules="[rules.required]"
-            class="mb-2"
-          />
-          <v-text-field 
-            label="Email" 
-            v-model="form.email" 
-            type="email"
-            :rules="[rules.required, rules.email]"
-            class="mb-2"
-          />
-          <v-text-field 
-            label="Contact Number" 
-            v-model="form.contact_number" 
-            :rules="[rules.required]"
-            class="mb-2"
-          />
-          <v-text-field 
-            label="Password" 
-            type="password" 
-            v-model="form.password"
-            :rules="[rules.required, rules.minLength]"
-            class="mb-2"
-          />
-        </template>
-      </v-card-text>
+              <!-- Employee Registration Fields -->
+              <template v-else-if="form.role === 'employee'">
+                <div class="mb-3">
+                  <label class="form-label fw-medium text-secondary">Full Name</label>
+                  <input 
+                    type="text" 
+                    v-model="form.name" 
+                    class="form-control form-control-lg border-2"
+                    placeholder="Enter your full name"
+                  />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label fw-medium text-secondary">Email</label>
+                  <input 
+                    type="email" 
+                    v-model="form.email" 
+                    class="form-control form-control-lg border-2"
+                    placeholder="Enter your email"
+                  />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label fw-medium text-secondary">Contact Number</label>
+                  <input 
+                    type="tel" 
+                    v-model="form.contact_number" 
+                    class="form-control form-control-lg border-2"
+                    placeholder="Enter your contact number"
+                  />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label fw-medium text-secondary">Password</label>
+                  <input 
+                    type="password" 
+                    v-model="form.password" 
+                    class="form-control form-control-lg border-2"
+                    placeholder="Enter password (min 6 characters)"
+                  />
+                </div>
+                <div class="mb-4">
+                  <label class="form-label fw-medium text-secondary">Manager ID</label>
+                  <input 
+                    type="number" 
+                    v-model="form.manager_id" 
+                    class="form-control form-control-lg border-2"
+                    placeholder="Enter your manager's ID"
+                  />
+                  <small class="text-muted">Enter the ID of the manager who will supervise you</small>
+                </div>
+              </template>
 
-      <v-card-actions>
-        <v-btn 
-          color="primary" 
-          block 
-          @click="register" 
-          :disabled="!isFormValid"
-          :loading="loading"
-        >
-          {{ getRegisterButtonText() }}
-        </v-btn>
-      </v-card-actions>
+              <!-- Manager Registration Fields -->
+              <template v-else-if="form.role === 'manager'">
+                <div class="mb-3">
+                  <label class="form-label fw-medium text-secondary">Full Name</label>
+                  <input 
+                    type="text" 
+                    v-model="form.name" 
+                    class="form-control form-control-lg border-2"
+                    placeholder="Enter your full name"
+                  />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label fw-medium text-secondary">Email</label>
+                  <input 
+                    type="email" 
+                    v-model="form.email" 
+                    class="form-control form-control-lg border-2"
+                    placeholder="Enter your email"
+                  />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label fw-medium text-secondary">Contact Number</label>
+                  <input 
+                    type="tel" 
+                    v-model="form.contact_number" 
+                    class="form-control form-control-lg border-2"
+                    placeholder="Enter your contact number"
+                  />
+                </div>
+                <div class="mb-4">
+                  <label class="form-label fw-medium text-secondary">Password</label>
+                  <input 
+                    type="password" 
+                    v-model="form.password" 
+                    class="form-control form-control-lg border-2"
+                    placeholder="Enter password (min 6 characters)"
+                  />
+                </div>
+              </template>
 
-      <v-alert v-if="msg" :type="msgType" class="mt-2">{{ msg }}</v-alert>
-      
-      <v-card-text class="text-center pt-2">
-        <span class="text-body-2">Already have an account?</span>
-        <v-btn variant="text" color="primary" @click="$router.push('/login')" class="ml-1">
-          Login
-        </v-btn>
-      </v-card-text>
-    </v-card>
-  </v-container>
+              <!-- Message Alert -->
+              <div v-if="msg" :class="['alert border-0 rounded-3 mb-3', msgType === 'error' ? 'alert-danger' : 'alert-success']" role="alert">
+                <small class="fw-medium">{{ msg }}</small>
+              </div>
+
+              <!-- Submit Button -->
+              <button 
+                class="btn btn-primary btn-lg w-100 rounded-3 fw-semibold shadow-sm mb-3"
+                @click="register" 
+                :disabled="!isFormValid || loading"
+              >
+                <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status"></span>
+                {{ getRegisterButtonText() }}
+              </button>
+
+              <!-- Login Link -->
+              <div class="text-center">
+                <small class="text-muted">Already have an account?</small>
+                <button 
+                  class="btn btn-link p-0 ms-1 text-decoration-none fw-medium"
+                  @click="$router.push('/login')"
+                >
+                  Login
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -191,7 +220,7 @@ const msgType = ref("info");
 const loading = ref(false);
 
 const form = ref({
-  role: 'customer', // Default to customer
+  role: 'customer',
   // Customer fields
   full_name: "",
   email: "",
@@ -204,21 +233,6 @@ const form = ref({
   password: "",
   manager_id: ""
 });
-
-const roleOptions = [
-  { text: 'Customer', value: 'customer' },
-  { text: 'Employee', value: 'employee' },
-  { text: 'Manager', value: 'manager' }
-];
-
-const rules = {
-  required: (value) => !!value || 'This field is required',
-  email: (value) => {
-    const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return pattern.test(value) || 'Invalid email address'
-  },
-  minLength: (value) => (value && value.length >= 6) || 'Password must be at least 6 characters'
-};
 
 const isFormValid = computed(() => {
   if (!form.value.role) return false;
@@ -245,7 +259,6 @@ const isFormValid = computed(() => {
 });
 
 const onRoleChange = () => {
-  // Clear all form fields when role changes
   form.value.full_name = "";
   form.value.email = "";
   form.value.phone = "";
@@ -276,7 +289,6 @@ const register = async () => {
 
   try {
     if (form.value.role === 'customer') {
-      // Customer registration
       const res = await api.post("/register", {
         full_name: form.value.full_name,
         email: form.value.email,
@@ -288,13 +300,11 @@ const register = async () => {
       msg.value = res.data.message;
       msgType.value = "success";
       
-      // Go to KYC upload
       setTimeout(() => {
         router.push(`/kyc-upload/${res.data.customer_id}`);
       }, 1500);
       
     } else if (form.value.role === 'employee') {
-      // Employee registration
       const res = await api.post("/api/employee/register", {
         name: form.value.name,
         email: form.value.email,
@@ -313,7 +323,6 @@ const register = async () => {
       }
       
     } else if (form.value.role === 'manager') {
-      // Manager registration
       const res = await api.post("/api/manager/register", {
         name: form.value.name,
         email: form.value.email,
@@ -339,3 +348,31 @@ const register = async () => {
   }
 };
 </script>
+
+<style scoped>
+.card {
+  border-radius: 20px;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+</style>

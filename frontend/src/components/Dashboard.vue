@@ -416,7 +416,8 @@ import {
   X,
   Wallet,
   Moon,
-  Sun
+  Sun,
+  AlertCircle
 } from "lucide-vue-next";
 import { useDarkMode } from "@/composables/useDarkMode";
 
@@ -437,7 +438,8 @@ export default {
     X,
     Wallet,
     Moon,
-    Sun
+    Sun,
+    AlertCircle
   },
   setup() {
     const { isDarkMode, toggleDarkMode } = useDarkMode()
@@ -469,7 +471,8 @@ export default {
         { id: 'transfer', label: 'Transfer Money', path: '/transfer', icon: Send },
         { id: 'history', label: 'Transactions', path: '/history', icon: FileText },
         { id: 'payments', label: 'Payments', path: '/payments', icon: Wallet },
-        { id: 'chatbot', label: 'AI Assistant', path: '/chatbot', icon: MessageSquare }
+        { id: 'chatbot', label: 'AI Assistant', path: '/chatbot', icon: MessageSquare },
+        { id: 'disputes', label: 'Disputes', path: '/disputes', icon: AlertCircle }
       ]
       ,
       spendingCategories: []

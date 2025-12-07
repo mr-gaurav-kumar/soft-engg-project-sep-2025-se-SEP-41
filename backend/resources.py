@@ -279,9 +279,16 @@ class IssueApi(Resource):
             }, 400
 
     def get(self): 
-        issues = [] 
+        from flask import request
+        customer_id = request.args.get('customer_id', type=int)
+        
+        issues = []
         issue_jsons = []
-        issues = Issue.query.all()
+        
+        if customer_id:
+            issues = Issue.query.filter_by(customer_id=customer_id).all()
+        else:
+            issues = Issue.query.all()
         
         for issue in issues:
             this_issue = {}
@@ -290,7 +297,8 @@ class IssueApi(Resource):
             this_issue["customer_id"] = issue.customer_id
             this_issue["description"] = issue.description
             this_issue["created_date"] = issue.assigned_date.isoformat()
-            this_issue["status"] = issue.status  # Include status field
+            this_issue["status"] = issue.status
+            this_issue["resolution_summary"] = issue.resolution_summary if issue.resolution_summary else None
 
             issue_jsons.append(this_issue)
             
