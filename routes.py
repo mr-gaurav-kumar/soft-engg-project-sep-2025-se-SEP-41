@@ -106,6 +106,41 @@ def setup_routes(app):
         return jsonify({
             "message": "Employee already exits!"
         }), 400
-
-
     
+    #############################
+
+    @app.route('/api/employee/login', methods = ['POST'])
+    # or we can write - @app.post('/api/register')
+    def employee_login():
+        credentials = request.get_json()
+        emp = Bank_employee.query.filter_by(email=credentials["email"]).first()
+        if not emp:
+            return jsonify({
+                "message": "Employee does not exist"
+            }), 400
+        elif check_password_hash(emp.password, credentials["password"]):
+            return jsonify({
+                "message": "Password does not match"
+            }), 400
+        else:
+            return jsonify({
+                "message": "Login successful"
+            }), 201
+        
+    @app.route('/api/manager/login', methods = ['POST'])
+    # or we can write - @app.post('/api/register')
+    def manager_login():
+        credentials = request.get_json()
+        manager = Bank_manager.query.filter_by(email=credentials["email"]).first()
+        if not manager:
+            return jsonify({
+                "message": "Manager does not exist"
+            }), 400
+        elif check_password_hash(manager.password, credentials["password"]):
+            return jsonify({
+                "message": "Password does not match"
+            }), 400
+        else:
+            return jsonify({
+                "message": "Login successful"
+            }), 201

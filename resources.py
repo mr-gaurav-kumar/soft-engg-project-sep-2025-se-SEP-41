@@ -52,10 +52,10 @@ class TaskApi(Resource):
     # @roles_accepted('admin', 'manager')
     def get(self): 
         
-        tasks = [] # stores list of objects of class Subject
+        tasks = [] # stores list of objects of class Task
         task_jsons = []
         tasks = Task.query.all()
-        # convering every object of class Subject into a disctionary
+        # convering every object of class Task into a disctionary
         for task in tasks:
             this_task = {}
             this_task["id"] = task.id
