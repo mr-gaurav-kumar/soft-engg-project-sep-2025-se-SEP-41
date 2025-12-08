@@ -2,11 +2,11 @@
 
 A comprehensive, full-stack banking application built with Vue.js (Frontend) and Flask (Backend), featuring AI-powered banking assistance, multi-role support (Customer, Employee, Manager), and modern UI/UX.
 
-## 🏦 About
+## About
 
 GIROBANK is a modern banking application that provides a complete banking experience with features including fund transfers, bill payments, KYC verification, dispute resolution, and AI-powered spending coaching. The application supports three distinct user roles: Customers, Employees, and Managers, each with tailored dashboards and functionalities.
 
-## ✨ Features
+## Features
 
 ### Customer Features
 - **Dashboard**: Real-time balance, transaction history, spending analytics with dynamic pie charts
@@ -39,7 +39,7 @@ GIROBANK is a modern banking application that provides a complete banking experi
 - **Spending Coach**: Personalized spending analysis and recommendations
 - **General Chatbot**: Intelligent banking assistant for customer queries
 
-## 🛠 Tech Stack
+## Tech Stack
 
 ### Frontend
 - **Vue.js 3**: Progressive JavaScript framework
@@ -62,7 +62,7 @@ GIROBANK is a modern banking application that provides a complete banking experi
 - **Pillow**: Image processing
 - **Pytesseract**: OCR for document processing
 
-## 📋 Prerequisites
+## Prerequisites
 
 Before you begin, ensure you have the following installed:
 
@@ -72,7 +72,7 @@ Before you begin, ensure you have the following installed:
 
 > **Note for Windows Users**: We strongly recommend using **WSL (Windows Subsystem for Linux)** with Ubuntu for better compatibility.
 
-## 🚀 Installation & Setup
+## Installation & Setup
 
 ### 1. Clone the Repository
 
@@ -153,7 +153,7 @@ If you encounter peer dependency issues, use:
 npm install --legacy-peer-deps
 ```
 
-## 🏃 Running the Application
+## Running the Application
 
 You will need two running terminal processes: one for the backend and one for the frontend.
 
@@ -185,7 +185,7 @@ Open your browser and navigate to:
 - **Frontend**: http://localhost:8080
 - **Backend API**: http://127.0.0.1:5000
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 Banking Application-3/
@@ -227,7 +227,7 @@ Banking Application-3/
 └── README.md                  # This file
 ```
 
-## 🔌 API Endpoints Overview
+## API Endpoints Overview
 
 ### Authentication
 - `POST /register` - Customer registration
@@ -274,7 +274,7 @@ Banking Application-3/
 - `POST /api/issue/create` - Create issue
 - `PUT /api/issue/update/<issue_id>` - Update issue
 
-## 👥 User Roles
+## User Roles
 
 ### Customer
 - Register with email, phone, and passwords
@@ -294,7 +294,7 @@ Banking Application-3/
 - Approve customer KYC documents
 - Monitor team performance
 
-## 🎨 UI/UX Features
+## UI/UX Features
 
 - **Modern Design**: Clean, professional interface with Bootstrap 5
 - **Dark Mode**: Global dark mode toggle with persistent state
@@ -304,7 +304,7 @@ Banking Application-3/
 - **Interactive Charts**: Visual representation of spending and analytics
 - **Smooth Animations**: Enhanced user experience with transitions
 
-## 🔒 Security Features
+## Security Features
 
 - **Password Hashing**: Secure password storage using Werkzeug
 - **OTP Verification**: Two-factor authentication for sensitive operations
@@ -313,7 +313,7 @@ Banking Application-3/
 - **CORS Protection**: Configured CORS headers for secure API access
 - **File Upload Security**: Secure filename handling for document uploads
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -340,7 +340,7 @@ Banking Application-3/
 **7. Email Not Sending**
 - **Fix**: Check your `.env` file has correct SMTP credentials. For Gmail, use an App Password instead of your regular password
 
-## 📝 Development Notes
+## Development Notes
 
 ### Database Migrations
 If you need to add new columns to existing tables, create migration scripts similar to:
@@ -358,7 +358,7 @@ The AI service is configured in `backend/ai_service.py`. To change the model:
 1. Update `MODEL_PATH` in `ai_service.py`
 2. Adjust `n_ctx`, `n_gpu_layers`, and other parameters based on your hardware
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
@@ -366,18 +366,19 @@ The AI service is configured in `backend/ai_service.py`. To change the model:
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## 📄 License
+## License
 
 This project is part of a Software Engineering course project (SEP-41).
 
-## 👨‍💻 Team
+## Team
 
 Developed by Team SEP-41 for Software Engineering Project.
 
-## 📞 Support
+## Support
 
 For issues, questions, or contributions, please open an issue on the repository.
 
 ---
 
 **Note**: This is a development project. For production use, additional security measures, testing, and deployment configurations would be required.
+
