@@ -1,15 +1,12 @@
 <template>
   <div class="d-flex min-vh-100 font-sans" :class="isDarkMode ? 'bg-dark' : 'bg-light'" :style="isDarkMode ? 'background-color: #0f172a;' : ''">
     <!-- Sidebar -->
-    <div class="sidebar d-flex flex-column shadow-sm" style="width: 280px; z-index: 1000; background-color: #1e293b;">
+    <div class="sidebar d-flex flex-column shadow-sm" style="width: 280px; position: fixed; height: 100vh; overflow-y: auto; z-index: 1000; background-color: #1e293b;">
       <!-- Logo/Header -->
       <div class="p-4 mb-2">
         <div class="d-flex align-items-center gap-3 mb-4">
-          <div class="logo-box bg-primary bg-gradient text-white rounded-3 d-flex align-items-center justify-content-center shadow-sm">
-            <span class="fw-bold fs-4">S</span>
-          </div>
           <div>
-            <h5 class="fw-bold text-white mb-0">Sep Bank</h5>
+            <h5 class="fw-bold text-white mb-0">GIROBANK</h5>
             <small class="text-white-50">Premium Banking</small>
           </div>
         </div>
@@ -82,7 +79,7 @@
     </div>
 
     <!-- Main Content -->
-    <div class="flex-grow-1 overflow-auto">
+    <div class="flex-grow-1 overflow-auto" style="margin-left: 280px;">
       <!-- Top Header -->
       <header 
         class="border-bottom px-4 py-3 d-flex justify-content-between align-items-center sticky-top shadow-sm"
@@ -103,41 +100,79 @@
         </div>
       </header>
 
-      <div class="p-4 p-lg-5">
+      <div class="p-4 p-lg-5" :style="isDarkMode ? 'background-color: #0f172a;' : ''">
         <div class="row g-4">
           <!-- Add Beneficiary Form -->
           <div class="col-lg-5">
-            <div class="card border-0 shadow-sm rounded-4">
-              <div class="card-header bg-white border-bottom border-light p-4">
-                <h5 class="fw-bold text-dark mb-0">Add New Beneficiary</h5>
+            <div class="card border-0 shadow-sm rounded-4" :class="isDarkMode ? 'bg-dark' : ''" :style="isDarkMode ? 'background-color: #1e293b; border: 1px solid rgba(255,255,255,0.1) !important;' : ''">
+              <div class="card-header border-bottom p-4" :class="isDarkMode ? 'bg-dark' : 'bg-white border-light'" :style="isDarkMode ? 'background-color: #1e293b; border-color: rgba(255,255,255,0.1) !important;' : ''">
+                <h5 :class="isDarkMode ? 'fw-bold text-white mb-0' : 'fw-bold text-dark mb-0'">Add New Beneficiary</h5>
               </div>
-              <div class="card-body p-4">
+              <div class="card-body p-4" :style="isDarkMode ? 'background-color: #1e293b;' : ''">
                 <form @submit.prevent="addBeneficiary">
                   <div class="mb-3">
-                    <label class="form-label small text-muted fw-bold">Full Name</label>
-                    <input v-model="beneficiary.name" type="text" class="form-control bg-light border-0 py-2" placeholder="e.g John Doe" required>
+                    <label :class="isDarkMode ? 'form-label small text-white-50 fw-bold' : 'form-label small text-muted fw-bold'">Full Name</label>
+                    <input 
+                      v-model="beneficiary.name" 
+                      type="text" 
+                      class="form-control border-0 py-2" 
+                      :class="isDarkMode ? 'bg-dark text-white' : 'bg-light'"
+                      :style="isDarkMode ? 'background-color: #0f172a; color: white;' : ''"
+                      placeholder="e.g John Doe" 
+                      required
+                    >
                   </div>
                   <div class="mb-3">
-                    <label class="form-label small text-muted fw-bold">Bank Name</label>
-                    <input v-model="beneficiary.bank_name" type="text" class="form-control bg-light border-0 py-2" placeholder="e.g. HDFC Bank" required>
+                    <label :class="isDarkMode ? 'form-label small text-white-50 fw-bold' : 'form-label small text-muted fw-bold'">Bank Name</label>
+                    <input 
+                      v-model="beneficiary.bank_name" 
+                      type="text" 
+                      class="form-control border-0 py-2" 
+                      :class="isDarkMode ? 'bg-dark text-white' : 'bg-light'"
+                      :style="isDarkMode ? 'background-color: #0f172a; color: white;' : ''"
+                      placeholder="e.g. HDFC Bank" 
+                      required
+                    >
                   </div>
                   <div class="mb-3">
-                    <label class="form-label small text-muted fw-bold">Account Number</label>
-                    <input v-model="beneficiary.account_number" type="text" class="form-control bg-light border-0 py-2" placeholder="Enter account number" required>
+                    <label :class="isDarkMode ? 'form-label small text-white-50 fw-bold' : 'form-label small text-muted fw-bold'">Account Number</label>
+                    <input 
+                      v-model="beneficiary.account_number" 
+                      type="text" 
+                      class="form-control border-0 py-2" 
+                      :class="isDarkMode ? 'bg-dark text-white' : 'bg-light'"
+                      :style="isDarkMode ? 'background-color: #0f172a; color: white;' : ''"
+                      placeholder="Enter account number" 
+                      required
+                    >
                   </div>
                   <div class="mb-3">
-                    <label class="form-label small text-muted fw-bold">IFSC Code</label>
-                    <input v-model="beneficiary.ifsc_code" type="text" class="form-control bg-light border-0 py-2" placeholder="e.g. HDFC0001234" required>
+                    <label :class="isDarkMode ? 'form-label small text-white-50 fw-bold' : 'form-label small text-muted fw-bold'">IFSC Code</label>
+                    <input 
+                      v-model="beneficiary.ifsc_code" 
+                      type="text" 
+                      class="form-control border-0 py-2" 
+                      :class="isDarkMode ? 'bg-dark text-white' : 'bg-light'"
+                      :style="isDarkMode ? 'background-color: #0f172a; color: white;' : ''"
+                      placeholder="e.g. HDFC0001234" 
+                      required
+                    >
                   </div>
                   <div class="mb-4">
-                    <label class="form-label small text-muted fw-bold">Transfer Mode</label>
-                    <select v-model="beneficiary.transfer_mode" class="form-select bg-light border-0 py-2">
+                    <label :class="isDarkMode ? 'form-label small text-white-50 fw-bold' : 'form-label small text-muted fw-bold'">Transfer Mode</label>
+                    <select 
+                      v-model="beneficiary.transfer_mode" 
+                      class="form-select border-0 py-2"
+                      :class="isDarkMode ? 'bg-dark text-white' : 'bg-light'"
+                      :style="isDarkMode ? 'background-color: #0f172a; color: white;' : ''"
+                    >
                       <option value="IMPS">IMPS</option>
                       <option value="NEFT">NEFT</option>
                       <option value="RTGS">RTGS</option>
                     </select>
                   </div>
                   <button type="submit" class="btn btn-primary w-100 py-2 fw-medium shadow-sm hover-lift">
+                    <i class="bi bi-plus-circle-fill me-2"></i>
                     Add Beneficiary
                   </button>
                 </form>
@@ -147,24 +182,30 @@
 
           <!-- Beneficiary List -->
           <div class="col-lg-7">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-              <div class="card-header bg-white border-bottom border-light p-4">
-                <h5 class="fw-bold text-dark mb-0">Your Beneficiaries</h5>
+            <div class="card border-0 shadow-sm rounded-4 h-100" :class="isDarkMode ? 'bg-dark' : ''" :style="isDarkMode ? 'background-color: #1e293b; border: 1px solid rgba(255,255,255,0.1) !important;' : ''">
+              <div class="card-header border-bottom p-4" :class="isDarkMode ? 'bg-dark' : 'bg-white border-light'" :style="isDarkMode ? 'background-color: #1e293b; border-color: rgba(255,255,255,0.1) !important;' : ''">
+                <h5 :class="isDarkMode ? 'fw-bold text-white mb-0' : 'fw-bold text-dark mb-0'">Your Beneficiaries</h5>
               </div>
               <div class="card-body p-0">
-                <div v-if="beneficiaries.length === 0" class="p-5 text-center text-muted">
+                <div v-if="beneficiaries.length === 0" class="p-5 text-center" :class="isDarkMode ? 'text-white-50' : 'text-muted'">
                   <Users :size="48" class="mb-3 opacity-25" />
                   <p>No beneficiaries added yet.</p>
                 </div>
                 <div v-else class="list-group list-group-flush">
-                  <div v-for="b in beneficiaries" :key="b.id" class="list-group-item border-light p-4 d-flex align-items-center justify-content-between hover-bg-light transition-all">
+                  <div 
+                    v-for="b in beneficiaries" 
+                    :key="b.id" 
+                    class="list-group-item p-4 d-flex align-items-center justify-content-between transition-all"
+                    :class="isDarkMode ? 'border-secondary' : 'border-light hover-bg-light'"
+                    :style="isDarkMode ? 'background-color: #1e293b; border-color: rgba(255,255,255,0.1) !important;' : ''"
+                  >
                     <div class="d-flex align-items-center gap-3">
                       <div class="rounded-circle bg-primary-subtle text-primary p-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
                         <span class="fw-bold">{{ b.name.charAt(0) }}</span>
                       </div>
                       <div>
-                        <h6 class="fw-bold text-dark mb-0">{{ b.name }}</h6>
-                        <small class="text-muted d-block">{{ b.bank_name }} • {{ b.account_number }}</small>
+                        <h6 :class="isDarkMode ? 'fw-bold text-white mb-0' : 'fw-bold text-dark mb-0'">{{ b.name }}</h6>
+                        <small :class="isDarkMode ? 'text-white-50 d-block' : 'text-muted d-block'">{{ b.bank_name }} • {{ b.account_number }}</small>
                       </div>
                     </div>
                     <div class="text-end">
@@ -219,7 +260,8 @@ import {
   Bell,
   Wallet,
   Moon,
-  Sun
+  Sun,
+  AlertCircle
 } from 'lucide-vue-next'
 import { useDarkMode } from "@/composables/useDarkMode";
 
@@ -258,6 +300,7 @@ const navItems = [
   { id: 'history', label: 'Transactions', path: '/history', icon: FileText },
   { id: 'payments', label: 'Payments', path: '/payments', icon: Wallet },
   { id: 'chatbot', label: 'AI Assistant', path: '/chatbot', icon: MessageSquare },
+  { id: 'disputes', label: 'Disputes', path: '/disputes', icon: AlertCircle }
 ]
 
 

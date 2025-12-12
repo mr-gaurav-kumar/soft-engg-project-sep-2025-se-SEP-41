@@ -1,15 +1,24 @@
 <template>
-  <div class="d-flex min-vh-100">
+  <div class="d-flex min-vh-100 font-sans" :class="isDarkMode ? 'bg-dark' : 'bg-light'" :style="isDarkMode ? 'background-color: #0f172a;' : ''">
     <!-- Sidebar Navigation -->
-    <div class="sidebar d-flex flex-column" style="width: 280px; background-color: #1e293b; color: white;">
+    <div class="sidebar d-flex flex-column shadow-sm" style="width: 280px; position: fixed; height: 100vh; overflow-y: auto; z-index: 1000; background-color: #1e293b;">
       <div class="p-4 mb-2">
         <div class="d-flex align-items-center gap-3 mb-4">
-          <div class="logo-box bg-primary bg-gradient text-white rounded-3 d-flex align-items-center justify-content-center shadow-sm" style="width: 48px; height: 48px;">
-            <span class="fw-bold fs-4">E</span>
-          </div>
           <div>
-            <h5 class="fw-bold text-white mb-0">Employee Portal</h5>
-            <small class="text-white-50">{{ employeeName || 'Employee' }}</small>
+            <h5 class="fw-bold text-white mb-0">GIROBANK</h5>
+            <small class="text-white-50">Employee Portal</small>
+          </div>
+        </div>
+        
+        <div 
+          class="user-profile p-3 rounded-3 d-flex align-items-center gap-3" 
+          style="background-color: rgba(255,255,255,0.05);"
+        >
+          <div class="avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold">
+            {{ getInitials(employeeName || 'Employee') }}
+          </div>
+          <div class="overflow-hidden">
+            <h6 class="text-white mb-0 text-truncate">{{ employeeName || 'Employee' }}</h6>
           </div>
         </div>
       </div>
@@ -34,6 +43,19 @@
         </div>
       </div>
 
+      <!-- Dark Mode Toggle -->
+      <div class="px-3 py-2 border-top border-secondary border-opacity-25">
+        <button 
+          class="btn btn-ghost-dark text-white-50 w-100 d-flex align-items-center justify-content-between px-3 py-2 rounded-3 transition-all hover-text-white"
+          @click="toggleDarkMode"
+        >
+          <div class="d-flex align-items-center gap-3">
+            <component :is="isDarkMode ? Sun : Moon" :size="20" />
+            <span class="fw-medium">{{ isDarkMode ? 'Light Mode' : 'Dark Mode' }}</span>
+          </div>
+        </button>
+      </div>
+
       <div class="p-3 border-top border-secondary border-opacity-25">
         <button 
           class="logout-btn w-100 d-flex align-items-center justify-content-center gap-2 py-2"
@@ -46,7 +68,7 @@
     </div>
 
     <!-- Main Content Area -->
-    <div class="flex-grow-1 overflow-auto" style="background-color: #f4f7f6;">
+    <div class="flex-grow-1 overflow-auto" style="margin-left: 280px;">
       <!-- Router View for Nested Routes -->
       <router-view></router-view>
     </div>
@@ -56,11 +78,22 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { LogOut, LayoutDashboard, FileText, AlertCircle } from "lucide-vue-next";
+import { LogOut, LayoutDashboard, FileText, AlertCircle, Moon, Sun } from "lucide-vue-next";
+import { useDarkMode } from "@/composables/useDarkMode";
 
 const router = useRouter();
 const route = useRoute();
+const { isDarkMode, toggleDarkMode } = useDarkMode();
 const employeeName = ref(localStorage.getItem("employee_name") || "Employee");
+
+const getInitials = (name) => {
+  return name
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+};
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', path: '/employee-dashboard', icon: LayoutDashboard },
@@ -131,5 +164,15 @@ const handleLogout = () => {
 .logout-btn:active {
   transform: scale(0.98);
   background: rgba(220, 53, 69, 0.16);
+}
+
+.font-sans {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  font-size: 0.875rem;
 }
 </style>

@@ -1,15 +1,12 @@
 <template>
   <div class="d-flex min-vh-100 font-sans" :class="isDarkMode ? 'bg-dark' : 'bg-light'" :style="isDarkMode ? 'background-color: #0f172a;' : ''">
     <!-- Sidebar -->
-    <div class="sidebar d-flex flex-column shadow-sm" style="width: 280px; z-index: 1000; background-color: #1e293b;">
+    <div class="sidebar d-flex flex-column shadow-sm" style="width: 280px; position: fixed; height: 100vh; overflow-y: auto; z-index: 1000; background-color: #1e293b;">
       <!-- Logo/Header -->
       <div class="p-4 mb-2">
         <div class="d-flex align-items-center gap-3 mb-4">
-          <div class="logo-box bg-primary bg-gradient text-white rounded-3 d-flex align-items-center justify-content-center shadow-sm">
-            <span class="fw-bold fs-4">S</span>
-          </div>
           <div>
-            <h5 class="fw-bold text-white mb-0">Sep Bank</h5>
+            <h5 class="fw-bold text-white mb-0">GIROBANK</h5>
             <small class="text-white-50">Premium Banking</small>
           </div>
         </div>
@@ -75,7 +72,7 @@
     </div>
 
     <!-- Main Content -->
-    <div class="flex-grow-1 overflow-auto">
+    <div class="flex-grow-1 overflow-auto" style="margin-left: 280px;">
       <!-- Top Header -->
       <header 
         class="border-bottom px-4 py-3 d-flex justify-content-between align-items-center sticky-top shadow-sm"
@@ -110,11 +107,15 @@
                   <div
                     v-for="dispute in disputes"
                     :key="dispute.id"
-                    class="card border-0 shadow-sm rounded-3 p-4 transition-all"
-                    :class="dispute.status.toLowerCase() === 'pending' ? 'issue-pending' : 'issue-resolved'"
+                    class="card border-0 shadow-sm rounded-3 p-4 transition-all dispute-card"
+                    :class="[
+                      dispute.status.toLowerCase() === 'pending' ? 'issue-pending' : 'issue-resolved',
+                      expandedDisputes[dispute.id] ? 'expanded' : ''
+                    ]"
                     :style="dispute.status.toLowerCase() === 'pending' 
                       ? 'background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 193, 7, 0.05) 100%); border-left: 4px solid #ffc107 !important;' 
                       : 'background: linear-gradient(135deg, rgba(25, 135, 84, 0.1) 0%, rgba(25, 135, 84, 0.05) 100%); border-left: 4px solid #198754 !important;'"
+                    @click="toggleDispute(dispute.id)"
                   >
                     <div class="d-flex justify-content-between align-items-start mb-3">
                       <div class="flex-grow-1">
@@ -131,9 +132,26 @@
                         {{ dispute.status }}
                       </span>
                     </div>
-                    <div v-if="dispute.resolution_summary" class="mt-3 pt-3 border-top" :style="isDarkMode ? 'border-color: rgba(255,255,255,0.1) !important;' : ''">
-                      <p :class="isDarkMode ? 'text-white-50 mb-1 small fw-medium' : 'text-muted mb-1 small fw-medium'">Resolution:</p>
-                      <p :class="isDarkMode ? 'text-white mb-0 small' : 'text-dark mb-0 small'">{{ dispute.resolution_summary }}</p>
+                    <div v-if="dispute.resolution_summary" class="expand-section">
+                      <div 
+                        v-if="!expandedDisputes[dispute.id]"
+                        class="d-flex align-items-center gap-2 mt-2 pt-2 border-top expand-hint"
+                        :style="isDarkMode ? 'border-color: rgba(255,255,255,0.1) !important;' : ''"
+                        @click.stop="toggleDispute(dispute.id)"
+                      >
+                        <i class="bi bi-arrows-angle-expand" :class="isDarkMode ? 'text-white-50' : 'text-muted'"></i>
+                        <small :class="isDarkMode ? 'text-white-50' : 'text-muted'">Click to view full summary</small>
+                      </div>
+                      <div 
+                        v-else
+                        class="mt-3 pt-3 border-top resolution-content"
+                        :style="isDarkMode ? 'border-color: rgba(255,255,255,0.1) !important;' : ''"
+                      >
+                        <p :class="isDarkMode ? 'text-white-50 mb-2 small fw-medium' : 'text-muted mb-2 small fw-medium'">
+                          <i class="bi bi-check-circle me-2"></i>Resolution:
+                        </p>
+                        <p :class="isDarkMode ? 'text-white mb-0' : 'text-dark mb-0'" style="white-space: pre-wrap; line-height: 1.6;">{{ dispute.resolution_summary }}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -229,7 +247,9 @@ export default {
     const { isDarkMode, toggleDarkMode } = useDarkMode()
     return {
       isDarkMode,
-      toggleDarkMode
+      toggleDarkMode,
+      Moon,
+      Sun
     }
   },
   data() {
@@ -241,6 +261,7 @@ export default {
       submitting: false,
       errorMessage: "",
       successMessage: "",
+      expandedDisputes: {}, // Track which disputes are expanded
       newDispute: {
         title: "",
         description: ""
@@ -276,6 +297,13 @@ export default {
       if (!dateString) return '';
       const date = new Date(dateString);
       return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    },
+    toggleDispute(disputeId) {
+      // Only allow expansion if there's a resolution summary
+      const dispute = this.disputes.find(d => d.id === disputeId);
+      if (dispute && dispute.resolution_summary) {
+        this.expandedDisputes[disputeId] = !this.expandedDisputes[disputeId];
+      }
     },
     async fetchDisputes() {
       this.loading = true;
@@ -357,6 +385,47 @@ export default {
   box-shadow: 0 4px 12px rgba(25, 135, 84, 0.2) !important;
 }
 
+.dispute-card {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.dispute-card:hover {
+  transform: translateY(-2px);
+}
+
+.expand-hint {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.expand-hint:hover {
+  opacity: 0.8;
+}
+
+.expand-hint i {
+  transition: transform 0.3s ease;
+}
+
+.dispute-card.expanded .expand-hint i {
+  transform: rotate(180deg);
+}
+
+.resolution-content {
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 1000px;
+  }
+}
+
 .logout-btn {
   background: #fff;
   border: 1px solid rgba(220, 53, 69, 0.35);
@@ -408,6 +477,16 @@ export default {
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  font-size: 14px;
+}
+
+.font-sans {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 }
 </style>
 

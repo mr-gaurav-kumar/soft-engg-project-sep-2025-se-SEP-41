@@ -7,11 +7,11 @@
             <!-- Header -->
             <div class="card-header bg-primary bg-gradient text-white text-center py-4 border-0">
               <div class="d-flex align-items-center justify-content-center gap-3 mb-2">
-                <div class="logo-box bg-white bg-opacity-20 text-white rounded-3 d-flex align-items-center justify-content-center shadow-sm" style="width: 50px; height: 50px;">
-                  <span class="fw-bold fs-4">S</span>
+                <div class="logo-box bg-white bg-opacity-20 text-white rounded-3 d-flex align-items-center justify-content-center shadow-sm overflow-hidden" style="width: 50px; height: 50px;">
+                  <img src="@/assets/bank.png" alt="GIROBANK" style="width: 100%; height: 100%; object-fit: contain; padding: 4px;" />
                 </div>
                 <div>
-                  <h4 class="fw-bold mb-0">Sep Bank</h4>
+                  <h4 class="fw-bold mb-0">GIROBANK</h4>
                   <small class="opacity-75">Premium Banking</small>
                 </div>
               </div>

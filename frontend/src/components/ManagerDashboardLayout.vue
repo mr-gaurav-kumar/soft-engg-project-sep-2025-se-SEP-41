@@ -1,15 +1,12 @@
 <template>
-  <div class="d-flex min-vh-100 font-sans">
+  <div class="d-flex min-vh-100 font-sans" :class="isDarkMode ? 'bg-dark' : 'bg-light'" :style="isDarkMode ? 'background-color: #0f172a;' : ''">
     <!-- Sidebar -->
-    <div class="sidebar d-flex flex-column shadow-sm" style="width: 280px; z-index: 1000; background-color: #1e293b;">
+    <div class="sidebar d-flex flex-column shadow-sm" style="width: 280px; position: fixed; height: 100vh; overflow-y: auto; z-index: 1000; background-color: #1e293b;">
       <!-- Logo/Header -->
       <div class="p-4 mb-2">
         <div class="d-flex align-items-center gap-3 mb-4">
-          <div class="logo-box bg-primary bg-gradient text-white rounded-3 d-flex align-items-center justify-content-center shadow-sm">
-            <span class="fw-bold fs-4">M</span>
-          </div>
           <div>
-            <h5 class="fw-bold text-white mb-0">Manager Portal</h5>
+            <h5 class="fw-bold text-white mb-0">GIROBANK</h5>
             <small class="text-white-50">Management Dashboard</small>
           </div>
         </div>
@@ -48,6 +45,19 @@
         </div>
       </div>
 
+      <!-- Dark Mode Toggle -->
+      <div class="px-3 py-2 border-top border-secondary border-opacity-25">
+        <button 
+          class="btn btn-ghost-dark text-white-50 w-100 d-flex align-items-center justify-content-between px-3 py-2 rounded-3 transition-all hover-text-white"
+          @click="toggleDarkMode"
+        >
+          <div class="d-flex align-items-center gap-3">
+            <component :is="isDarkMode ? Sun : Moon" :size="20" />
+            <span class="fw-medium">{{ isDarkMode ? 'Light Mode' : 'Dark Mode' }}</span>
+          </div>
+        </button>
+      </div>
+
       <!-- Logout -->
       <div class="p-3 border-top border-secondary border-opacity-25">
         <button 
@@ -61,7 +71,7 @@
     </div>
 
     <!-- Main Content Area -->
-    <div class="flex-grow-1 overflow-auto" style="background-color: #f4f7f6;">
+    <div class="flex-grow-1 overflow-auto" style="margin-left: 280px;">
       <!-- Router View for Nested Routes -->
       <router-view></router-view>
     </div>
@@ -71,22 +81,24 @@
 <script setup>
 import { ref } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { LogOut, LayoutDashboard, ClipboardList, PlusCircle } from "lucide-vue-next";
+import { LogOut, LayoutDashboard, ClipboardList, PlusCircle, Moon, Sun } from "lucide-vue-next";
+import { useDarkMode } from "@/composables/useDarkMode";
 
 const router = useRouter();
 const route = useRoute();
+const { isDarkMode, toggleDarkMode } = useDarkMode();
 const managerName = ref(localStorage.getItem("manager_name") || "Manager");
+
+const getInitials = (name) => {
+  if (!name) return 'M';
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+};
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', path: '/manager-dashboard', icon: LayoutDashboard },
   { id: 'active-tasks', label: 'Active Tasks', path: '/manager-dashboard/active-tasks', icon: ClipboardList },
   { id: 'create-task', label: 'Create Task', path: '/manager-dashboard/create-task', icon: PlusCircle }
 ];
-
-const getInitials = (name) => {
-  if (!name) return 'M';
-  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-};
 
 const isActiveRoute = (path) => {
   if (path === '/manager-dashboard') {
@@ -172,4 +184,5 @@ const handleLogout = () => {
   background: rgba(220, 53, 69, 0.16);
 }
 </style>
+
 

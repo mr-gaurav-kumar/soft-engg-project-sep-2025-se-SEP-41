@@ -16,6 +16,7 @@ import os
 from io import BytesIO
 from resources import api
 from ai_service import ai
+import pytz
 
 app = Flask(__name__)
 
@@ -26,11 +27,38 @@ app.config['SECRET_KEY'] = 'softwareengineeringproject'
 db.init_app(app)
 api.init_app(app)
 
-CORS(app, resources={r"/*": {"origins": "*"}})
+# Configure CORS with comprehensive settings
+# Flask-CORS will automatically handle all CORS headers for all routes
+CORS(app, resources={r"/*": {
+    "origins": "*",
+    "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
+    "expose_headers": ["Content-Type"],
+    "supports_credentials": False
+}})
 
 load_dotenv()
 
-UPLOAD_FOLDER = "uploaded_docs" 
+UPLOAD_FOLDER = "uploaded_docs"
+
+# IST timezone
+IST = pytz.timezone('Asia/Kolkata')
+
+def utc_to_ist(utc_dt):
+    """Convert UTC datetime to IST"""
+    if utc_dt is None:
+        return None
+    if utc_dt.tzinfo is None:
+        # Assume it's UTC if no timezone info
+        utc_dt = pytz.UTC.localize(utc_dt)
+    return utc_dt.astimezone(IST)
+
+def format_datetime_ist(dt):
+    """Format datetime to IST string"""
+    if dt is None:
+        return None
+    ist_dt = utc_to_ist(dt)
+    return ist_dt.strftime("%Y-%m-%d %H:%M:%S") 
 
 CATEGORY_KEYWORDS = {
     "food": ["restaurant", "dine", "swiggy", "zomato"],
@@ -247,7 +275,6 @@ def send_kyc_otp(customer_id):
     send_email(kyc.customer.email, "Your KYC OTP", f"Your OTP is: {otp}")
 
     response = jsonify({"message": "KYC OTP sent"})
-    response.headers.add('Access-Control-Allow-Origin', '*')
     return response, 200
 
 ######################################## KYC Verify OTP Route ##########################################
@@ -276,7 +303,6 @@ def verify_kyc_otp(customer_id):
     response = jsonify({
         "message": "OTP Verified. KYC is now pending manager approval."
     })
-    response.headers.add('Access-Control-Allow-Origin', '*')
     return response, 200
 
 ############################################ Login Route ##########################################
@@ -311,7 +337,6 @@ def login():
     send_email(customer.email, "Login OTP", f"Your login OTP is: {otp}")
 
     response = jsonify({"message": "OTP sent"})
-    response.headers.add('Access-Control-Allow-Origin', '*')
     return response, 200
 
 ############################################ Login Verify OTP Route ##########################################
@@ -351,7 +376,6 @@ def verify_login_otp():
             "account_number": account.account_number
         }
     })
-    response.headers.add('Access-Control-Allow-Origin', '*')
     return response, 200
 
 ###################################### Forgot Password Route ##########################################
@@ -429,7 +453,7 @@ def mini_statement(customer_id):
         'transaction_id': t.transaction_uuid,
         'type': t.transaction_type,
         'amount': t.amount,
-        'timestamp': t.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+        'timestamp': format_datetime_ist(t.timestamp),
         'description': t.description
     } for t in txns]
 
@@ -456,7 +480,7 @@ def get_transactions(customer_id):
         writer = csv.writer(output)
         writer.writerow(['ID', 'Type', 'Amount', 'Timestamp', 'Description'])
         for t in txns:
-            writer.writerow([t.id, t.transaction_type, t.amount, t.timestamp, t.description])
+            writer.writerow([t.id, t.transaction_type, t.amount, format_datetime_ist(t.timestamp), t.description])
         output.seek(0)
         return send_file(io.BytesIO(output.getvalue().encode()),
                          as_attachment=True,
@@ -470,8 +494,9 @@ def get_transactions(customer_id):
         pdf.cell(200, 10, txt="Transaction History", ln=True, align='C')
         for t in txns:
             amount_str = f"Rs.{t.amount}"
+            timestamp_str = format_datetime_ist(t.timestamp)
             pdf.cell(200, 8,
-                    txt=f"{t.timestamp} | {t.transaction_type} | {amount_str} | {t.description}",
+                    txt=f"{timestamp_str} | {t.transaction_type} | {amount_str} | {t.description}",
                     ln=True)
         pdf_output = BytesIO()
         pdf_bytes = pdf.output(dest='S').encode('latin1')
@@ -489,7 +514,7 @@ def get_transactions(customer_id):
         'id': t.id,
         'type': t.transaction_type,
         'amount': t.amount,
-        'timestamp': t.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+        'timestamp': format_datetime_ist(t.timestamp),
         'description': t.description
     } for t in txns]
     return jsonify(data)
@@ -592,7 +617,7 @@ def list_beneficiaries(customer_id):
             'ifsc_code': b.ifsc_code,
             'transfer_mode': b.transfer_mode,
             'status': status,
-            'added_at': b.added_at.strftime("%Y-%m-%d %H:%M:%S")
+            'added_at': format_datetime_ist(b.added_at)
         })
     return jsonify(result)
 
@@ -1281,7 +1306,7 @@ def view_beneficiary():
         'ifsc_code': beneficiary.ifsc_code,
         'transfer_mode': beneficiary.transfer_mode,
         'status': status,
-        'added_at': beneficiary.added_at.strftime("%Y-%m-%d %H:%M:%S")
+        'added_at': format_datetime_ist(beneficiary.added_at)
     }
 
     return jsonify(result), 200
@@ -1480,7 +1505,7 @@ def get_customer_profile(customer_id):
                     if isinstance(dt_value, str):
                         return dt_value  # Already a string, return as is
                     if isinstance(dt_value, datetime):
-                        return dt_value.strftime("%Y-%m-%d %H:%M:%S")
+                        return format_datetime_ist(dt_value)
                     return str(dt_value)  # Fallback to string conversion
                 
                 kyc_data = {
@@ -1526,13 +1551,13 @@ def get_customer_profile(customer_id):
             "email": customer.email,
             "phone": customer.phone,
             "is_active": customer.is_active,
-            "created_at": customer.created_at.strftime("%Y-%m-%d %H:%M:%S") if (customer.created_at is not None) else None,
+            "created_at": format_datetime_ist(customer.created_at) if (customer.created_at is not None) else None,
 
             "account": {
                 "account_number": account.account_number if account else None,
                 "account_type": account.account_type if account else None,
                 "balance": float(account.balance) if account and account.balance else None,
-                "created_at": account.created_at.strftime("%Y-%m-%d %H:%M:%S") if (account and account.created_at) else None
+                "created_at": format_datetime_ist(account.created_at) if (account and account.created_at) else None
             },
 
             "kyc": kyc_data
@@ -1557,10 +1582,6 @@ def serve_kyc_document_profile(filepath):
         return jsonify({"message": "File not found"}), 404
 
     response = send_file(filepath)
-    # Add CORS headers explicitly for file serving
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Methods', 'GET')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
     return response
 
 ########################################### Mounesh's Code ############################################
@@ -1810,7 +1831,6 @@ def analyze_kyc_document(kyc_id):
         kyc_record = KYC.query.get(kyc_id)
         if not kyc_record:
             response = jsonify({"message": "Record not found"})
-            response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 404
         
         # 1. Collect all 4 files (Robust check)
@@ -1833,14 +1853,12 @@ def analyze_kyc_document(kyc_id):
             "ai_status": kyc_record.ai_validation_status,
             "ai_remarks": result
         })
-        response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 200
     except Exception as e:
         print(f"Error in analyze_kyc_document: {str(e)}")
         import traceback
         traceback.print_exc()
         response = jsonify({"message": f"Internal server error: {str(e)}"})
-        response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 500
 
 
@@ -1862,7 +1880,7 @@ def draft_dispute(issue_id):
         txns = Transaction.query.filter_by(account_id=account.id)\
                .order_by(Transaction.timestamp.desc()).limit(5).all()
         recent_txns = [
-            {"date": t.timestamp.strftime("%Y-%m-%d"), "desc": t.description, "amount": t.amount}
+            {"date": format_datetime_ist(t.timestamp).split()[0] if t.timestamp else None, "desc": t.description, "amount": t.amount}
             for t in txns
         ]
 
@@ -1874,6 +1892,50 @@ def draft_dispute(issue_id):
     draft = ai.draft_dispute_response(issue.description, recent_txns, past_history, current_balance)
     return jsonify({"suggested_response": draft})
 
+# --- Send Dispute Email to Customer ---
+@app.route('/api/employee/send-dispute-email/<int:issue_id>', methods=['POST'])
+def send_dispute_email(issue_id):
+    try:
+        issue = Issue.query.get(issue_id)
+        if not issue:
+            return jsonify({"error": "Issue not found"}), 404
+
+        data = request.get_json()
+        draft_message = data.get("draft_message", "")
+        employee_name = data.get("employee_name", "Bank Representative")
+
+        if not draft_message:
+            return jsonify({"error": "Draft message is required"}), 400
+
+        # Get customer email
+        customer = Customer.query.get(issue.customer_id)
+        if not customer or not customer.email:
+            return jsonify({"error": "Customer email not found"}), 404
+
+        # Replace [Your name] or similar placeholders with employee name if not already done
+        final_message = draft_message.replace("[Your name]", employee_name)
+        final_message = final_message.replace("[your name]", employee_name)
+        final_message = final_message.replace("Your name", employee_name)
+
+        # Send email
+        subject = f"Response to Your Issue: {issue.title}"
+        send_email(customer.email, subject, final_message)
+
+        # Update issue status to complete and store resolution summary
+        issue.status = "Complete"
+        issue.resolution_summary = final_message
+        db.session.commit()
+
+        return jsonify({
+            "message": "Email sent successfully",
+            "email_sent": True
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error sending dispute email: {str(e)}")
+        return jsonify({"error": f"Failed to send email: {str(e)}"}), 500
+
 # --- Feature 3: Spending Coach (Simple) ---
 @app.route('/api/customer/coach/<int:customer_id>', methods=['GET'])
 def spending_coach(customer_id):
@@ -1881,7 +1943,6 @@ def spending_coach(customer_id):
         account = Account.query.filter_by(customer_id=customer_id).first()
         if not account: 
             response = jsonify({"error": "No account"})
-            response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 404
 
         # 1. Get recent debits
@@ -1894,14 +1955,12 @@ def spending_coach(customer_id):
         # 2. AI Advice
         advice = ai.spending_tips(txn_data)
         response = jsonify({"advice": advice})
-        response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 200
     except Exception as e:
         print(f"Error in spending_coach: {str(e)}")
         import traceback
         traceback.print_exc()
         response = jsonify({"error": f"Internal server error: {str(e)}"})
-        response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 500
 
 # --- Feature 4: Smart Banking Chatbot ---
@@ -1925,7 +1984,7 @@ def chat_bot():
             account_info = (
                 f"Customer Name: {customer.full_name}\n"
                 f"Account Number: {account.account_number}\n"
-                f"IFSC Code: SEPB0001 (Sep Bank Main Branch)\n"
+                f"IFSC Code: GIRO0001 (GIROBANK Main Branch)\n"
                 f"Account Type: {account.account_type}\n"
                 f"Current Balance: Rs. {account.balance}"
             )
@@ -1946,14 +2005,12 @@ def chat_bot():
     try:
         reply = ai.general_chat(user_message, context_data)
         response = jsonify({"response": reply})
-        response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 200
     except Exception as e:
         print(f"Error in chat_bot: {str(e)}")
         import traceback
         traceback.print_exc()
         response = jsonify({"error": f"Internal server error: {str(e)}"})
-        response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 500
 if __name__ == "__main__":
     with app.app_context():

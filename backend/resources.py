@@ -299,6 +299,8 @@ class IssueApi(Resource):
             this_issue["created_date"] = issue.assigned_date.isoformat()
             this_issue["status"] = issue.status
             this_issue["resolution_summary"] = issue.resolution_summary if issue.resolution_summary else None
+            # Email is considered sent if status is Complete and resolution_summary exists
+            this_issue["emailSent"] = (issue.status and issue.status.lower() in ['complete', 'resolved']) and (issue.resolution_summary is not None)
 
             issue_jsons.append(this_issue)
             

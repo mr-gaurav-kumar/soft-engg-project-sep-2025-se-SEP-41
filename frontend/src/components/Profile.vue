@@ -1,15 +1,12 @@
 <template>
   <div class="d-flex min-vh-100 font-sans" :class="isDarkMode ? 'bg-dark' : 'bg-light'" :style="isDarkMode ? 'background-color: #0f172a;' : ''">
     <!-- Sidebar -->
-    <div class="sidebar d-flex flex-column shadow-sm" style="width: 280px; z-index: 1000; background-color: #1e293b;">
+    <div class="sidebar d-flex flex-column shadow-sm" style="width: 280px; position: fixed; height: 100vh; overflow-y: auto; z-index: 1000; background-color: #1e293b;">
       <!-- Logo/Header -->
       <div class="p-4 mb-2">
         <div class="d-flex align-items-center gap-3 mb-4">
-          <div class="logo-box bg-primary bg-gradient text-white rounded-3 d-flex align-items-center justify-content-center shadow-sm">
-            <span class="fw-bold fs-4">S</span>
-          </div>
           <div>
-            <h5 class="fw-bold text-white mb-0">Sep Bank</h5>
+            <h5 class="fw-bold text-white mb-0">GIROBANK</h5>
             <small class="text-white-50">Premium Banking</small>
           </div>
         </div>
@@ -75,7 +72,7 @@
     </div>
 
     <!-- Main Content -->
-    <div class="flex-grow-1 overflow-auto">
+    <div class="flex-grow-1 overflow-auto" style="margin-left: 280px;">
       <!-- Top Header -->
       <header 
         class="border-bottom px-4 py-3 d-flex justify-content-between align-items-center sticky-top shadow-sm"
@@ -114,37 +111,40 @@
         <!-- Profile Content -->
         <div v-if="profile && !loading">
           <!-- CUSTOMER DETAILS -->
-          <div class="card border-0 shadow-lg mb-4 rounded-4 overflow-hidden profile-card" style="background-color: #f8f9fa; border: 1px solid rgba(0,0,0,0.05) !important;">
-            <div class="card-header-profile-customer p-4" style="background-color: rgba(13, 110, 253, 0.1); border-bottom: 1px solid rgba(13, 110, 253, 0.2);">
+          <div 
+            class="card border-0 shadow-lg mb-4 rounded-4 overflow-hidden profile-card" 
+            :style="isDarkMode ? 'background-color: #1e293b; border: 1px solid rgba(255,255,255,0.1) !important;' : 'background-color: #f8f9fa; border: 1px solid rgba(0,0,0,0.05) !important;'"
+          >
+            <div class="card-header-profile-customer p-4" :style="isDarkMode ? 'background-color: rgba(13, 110, 253, 0.2); border-bottom: 1px solid rgba(13, 110, 253, 0.3);' : 'background-color: rgba(13, 110, 253, 0.1); border-bottom: 1px solid rgba(13, 110, 253, 0.2);'">
               <div class="d-flex align-items-center gap-3">
                 <div class="profile-icon-box bg-primary bg-opacity-20 rounded-3 d-flex align-items-center justify-content-center" style="width: 56px; height: 56px;">
                   <Users :size="28" class="text-primary" />
                 </div>
                 <div>
-                  <h5 class="fw-bold text-dark mb-1">Customer Details</h5>
-                  <p class="text-muted small mb-0">Personal information and account status</p>
+                  <h5 :class="isDarkMode ? 'fw-bold text-white mb-1' : 'fw-bold text-dark mb-1'">Customer Details</h5>
+                  <p :class="isDarkMode ? 'text-white-50 small mb-0' : 'text-muted small mb-0'">Personal information and account status</p>
                 </div>
               </div>
             </div>
-            <div class="card-body p-4" style="background-color: #f8f9fa;">
+            <div class="card-body p-4" :style="isDarkMode ? 'background-color: #1e293b;' : 'background-color: #f8f9fa;'">
               <div class="row g-4">
                 <div class="col-md-6">
                   <div class="profile-info-item">
-                    <label class="profile-label">Full Name</label>
-                    <p class="profile-value">{{ profile.full_name }}</p>
+                    <label :class="['profile-label', isDarkMode ? 'text-white-50' : '']">Full Name</label>
+                    <p :class="['profile-value', isDarkMode ? 'text-white' : '']">{{ profile.full_name }}</p>
                   </div>
                   <div class="profile-info-item">
-                    <label class="profile-label">Email Address</label>
-                    <p class="profile-value">{{ profile.email }}</p>
+                    <label :class="['profile-label', isDarkMode ? 'text-white-50' : '']">Email Address</label>
+                    <p :class="['profile-value', isDarkMode ? 'text-white' : '']">{{ profile.email }}</p>
                   </div>
                   <div class="profile-info-item">
-                    <label class="profile-label">Phone Number</label>
-                    <p class="profile-value">{{ profile.phone }}</p>
+                    <label :class="['profile-label', isDarkMode ? 'text-white-50' : '']">Phone Number</label>
+                    <p :class="['profile-value', isDarkMode ? 'text-white' : '']">{{ profile.phone }}</p>
                   </div>
                 </div>
                 <div class="col-md-6">
                   <div class="profile-info-item">
-                    <label class="profile-label">Account Status</label>
+                    <label :class="['profile-label', isDarkMode ? 'text-white-50' : '']">Account Status</label>
                     <div>
                       <span :class="['status-badge', profile.is_active ? 'status-active' : 'status-inactive']">
                         {{ profile.is_active ? 'Active' : 'Inactive' }}
@@ -152,8 +152,8 @@
                     </div>
                   </div>
                   <div class="profile-info-item">
-                    <label class="profile-label">Member Since</label>
-                    <p class="profile-value">{{ profile.created_at }}</p>
+                    <label :class="['profile-label', isDarkMode ? 'text-white-50' : '']">Member Since</label>
+                    <p :class="['profile-value', isDarkMode ? 'text-white' : '']">{{ formatDateTime(profile.created_at) }}</p>
                   </div>
                 </div>
               </div>
@@ -161,41 +161,52 @@
           </div>
 
           <!-- ACCOUNT DETAILS -->
-          <div class="card border-0 shadow-lg mb-4 rounded-4 overflow-hidden profile-card" style="background-color: #f8f9fa; border: 1px solid rgba(0,0,0,0.05) !important;">
-            <div class="card-header-profile-account p-4" style="background-color: rgba(25, 135, 84, 0.1); border-bottom: 1px solid rgba(25, 135, 84, 0.2);">
+          <div 
+            class="card border-0 shadow-lg mb-4 rounded-4 overflow-hidden profile-card" 
+            :style="isDarkMode ? 'background-color: #1e293b; border: 1px solid rgba(255,255,255,0.1) !important;' : 'background-color: #f8f9fa; border: 1px solid rgba(0,0,0,0.05) !important;'"
+          >
+            <div class="card-header-profile-account p-4" :style="isDarkMode ? 'background-color: rgba(25, 135, 84, 0.2); border-bottom: 1px solid rgba(25, 135, 84, 0.3);' : 'background-color: rgba(25, 135, 84, 0.1); border-bottom: 1px solid rgba(25, 135, 84, 0.2);'">
               <div class="d-flex align-items-center gap-3">
                 <div class="profile-icon-box bg-success bg-opacity-20 rounded-3 d-flex align-items-center justify-content-center" style="width: 56px; height: 56px;">
                   <LayoutDashboard :size="28" class="text-success" />
                 </div>
                 <div>
-                  <h5 class="fw-bold text-dark mb-1">Account Information</h5>
-                  <p class="text-muted small mb-0">Banking account details and balance</p>
+                  <h5 :class="isDarkMode ? 'fw-bold text-white mb-1' : 'fw-bold text-dark mb-1'">Account Information</h5>
+                  <p :class="isDarkMode ? 'text-white-50 small mb-0' : 'text-muted small mb-0'">Banking account details and balance</p>
                 </div>
               </div>
             </div>
-            <div class="card-body p-4" style="background-color: #f8f9fa;">
+            <div class="card-body p-4" :style="isDarkMode ? 'background-color: #1e293b;' : 'background-color: #f8f9fa;'">
               <div v-if="profile.account && profile.account.account_number">
                 <div class="row g-4">
                   <div class="col-md-6">
                     <div class="profile-info-item">
-                      <label class="profile-label">Account Number</label>
-                      <p class="profile-value account-number">{{ profile.account.account_number }}</p>
+                      <label :class="['profile-label', isDarkMode ? 'text-white-50' : '']">Account Number</label>
+                      <p 
+                        :class="['profile-value account-number', isDarkMode ? 'text-white' : '', 'cursor-pointer']"
+                        @mouseenter="revealAccountNumber"
+                        @mouseleave="hideAccountNumber"
+                        :title="showAccountNumber ? '' : 'Hover to reveal account number'"
+                        style="transition: all 0.3s ease; user-select: none;"
+                      >
+                        {{ maskedAccountNumber }}
+                      </p>
                     </div>
                     <div class="profile-info-item">
-                      <label class="profile-label">Account Type</label>
-                      <p class="profile-value">
+                      <label :class="['profile-label', isDarkMode ? 'text-white-50' : '']">Account Type</label>
+                      <p :class="['profile-value', isDarkMode ? 'text-white' : '']">
                         <span class="account-type-badge">{{ profile.account.account_type }}</span>
                       </p>
                     </div>
                   </div>
                   <div class="col-md-6">
                     <div class="profile-info-item">
-                      <label class="profile-label">Available Balance</label>
-                      <p class="profile-value balance-amount">₹{{ Number(profile.account.balance).toFixed(2) }}</p>
+                      <label :class="['profile-label', isDarkMode ? 'text-white-50' : '']">Available Balance</label>
+                      <p :class="['profile-value balance-amount', isDarkMode ? 'text-white' : '']">₹{{ Number(profile.account.balance).toFixed(2) }}</p>
                     </div>
                     <div class="profile-info-item">
-                      <label class="profile-label">Account Created</label>
-                      <p class="profile-value">{{ profile.account.created_at }}</p>
+                      <label :class="['profile-label', isDarkMode ? 'text-white-50' : '']">Account Created</label>
+                      <p :class="['profile-value', isDarkMode ? 'text-white' : '']">{{ formatDateTime(profile.account.created_at) }}</p>
                     </div>
                   </div>
                 </div>
@@ -209,23 +220,26 @@
           </div>
 
           <!-- KYC DETAILS -->
-          <div class="card border-0 shadow-lg rounded-4 overflow-hidden profile-card" style="background-color: #f8f9fa; border: 1px solid rgba(0,0,0,0.05) !important;">
-            <div class="card-header-profile-kyc p-4" style="background-color: rgba(255, 193, 7, 0.1); border-bottom: 1px solid rgba(255, 193, 7, 0.2);">
+          <div 
+            class="card border-0 shadow-lg rounded-4 overflow-hidden profile-card" 
+            :style="isDarkMode ? 'background-color: #1e293b; border: 1px solid rgba(255,255,255,0.1) !important;' : 'background-color: #f8f9fa; border: 1px solid rgba(0,0,0,0.05) !important;'"
+          >
+            <div class="card-header-profile-kyc p-4" :style="isDarkMode ? 'background-color: rgba(255, 193, 7, 0.2); border-bottom: 1px solid rgba(255, 193, 7, 0.3);' : 'background-color: rgba(255, 193, 7, 0.1); border-bottom: 1px solid rgba(255, 193, 7, 0.2);'">
               <div class="d-flex align-items-center gap-3">
                 <div class="profile-icon-box bg-warning bg-opacity-20 rounded-3 d-flex align-items-center justify-content-center" style="width: 56px; height: 56px;">
                   <FileText :size="28" class="text-warning" />
                 </div>
                 <div>
-                  <h5 class="fw-bold text-dark mb-1">KYC Information</h5>
-                  <p class="text-muted small mb-0">Verification status and documents</p>
+                  <h5 :class="isDarkMode ? 'fw-bold text-white mb-1' : 'fw-bold text-dark mb-1'">KYC Information</h5>
+                  <p :class="isDarkMode ? 'text-white-50 small mb-0' : 'text-muted small mb-0'">Verification status and documents</p>
                 </div>
               </div>
             </div>
-            <div class="card-body p-4" style="background-color: #f8f9fa;">
+            <div class="card-body p-4" :style="isDarkMode ? 'background-color: #1e293b;' : 'background-color: #f8f9fa;'">
               <div class="row g-4 mb-4">
                 <div class="col-md-6">
                   <div class="profile-info-item">
-                    <label class="profile-label">KYC Status</label>
+                    <label :class="['profile-label', isDarkMode ? 'text-white-50' : '']">KYC Status</label>
                     <div>
                       <span :class="['status-badge', getKycStatusBadgeClass(profile.kyc.status)]">
                         {{ profile.kyc.status || 'Not Submitted' }}
@@ -243,38 +257,47 @@
                 </div>
                 <div class="col-md-6">
                   <div class="profile-info-item">
-                    <label class="profile-label">Submitted At</label>
-                    <p class="profile-value">{{ profile.kyc.submitted_at || "N/A" }}</p>
+                    <label :class="['profile-label', isDarkMode ? 'text-white-50' : '']">Submitted At</label>
+                    <p :class="['profile-value', isDarkMode ? 'text-white' : '']">{{ formatDateTime(profile.kyc.submitted_at) }}</p>
                   </div>
                   <div class="profile-info-item">
-                    <label class="profile-label">Reviewed At</label>
-                    <p class="profile-value">{{ profile.kyc.reviewed_at || "N/A" }}</p>
+                    <label :class="['profile-label', isDarkMode ? 'text-white-50' : '']">Reviewed At</label>
+                    <p :class="['profile-value', isDarkMode ? 'text-white' : '']">{{ formatDateTime(profile.kyc.reviewed_at) }}</p>
                   </div>
                 </div>
               </div>
 
               <div v-if="profile.kyc.reviewer_comment" class="mb-4">
-                <label class="profile-label">Reviewer Comment</label>
-                <div class="reviewer-comment-box p-3 rounded-3" style="background-color: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.1);">
-                  <p class="mb-0 text-dark">{{ profile.kyc.reviewer_comment }}</p>
+                <label :class="['profile-label', isDarkMode ? 'text-white-50' : '']">Reviewer Comment</label>
+                <div 
+                  class="reviewer-comment-box p-3 rounded-3" 
+                  :style="isDarkMode ? 'background-color: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);' : 'background-color: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.1);'"
+                >
+                  <p :class="isDarkMode ? 'mb-0 text-white' : 'mb-0 text-dark'">{{ profile.kyc.reviewer_comment }}</p>
                 </div>
               </div>
 
-              <hr class="my-4" style="border-color: rgba(0,0,0,0.1);">
+              <hr class="my-4" :style="isDarkMode ? 'border-color: rgba(255,255,255,0.1);' : 'border-color: rgba(0,0,0,0.1);'">
 
               <!-- DOCUMENTS -->
               <div>
-                <h6 class="fw-bold mb-3 text-dark">Uploaded Documents</h6>
+                <h6 :class="isDarkMode ? 'fw-bold mb-3 text-white' : 'fw-bold mb-3 text-dark'">Uploaded Documents</h6>
                 <div class="row g-3">
                   <div v-for="doc in kycDocs" :key="doc.label" class="col-md-6">
-                    <div class="document-item p-3 rounded-3 d-flex align-items-center justify-content-between" style="background-color: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.1);">
+                    <div 
+                      class="document-item p-3 rounded-3 d-flex align-items-center justify-content-between" 
+                      :style="isDarkMode ? 'background-color: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);' : 'background-color: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.1);'"
+                    >
                       <div class="d-flex align-items-center gap-3">
-                        <div class="document-icon-box rounded-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background-color: rgba(0,0,0,0.05);">
-                          <FileText :size="20" class="text-muted" />
+                        <div 
+                          class="document-icon-box rounded-2 d-flex align-items-center justify-content-center" 
+                          :style="isDarkMode ? 'width: 40px; height: 40px; background-color: rgba(255,255,255,0.1);' : 'width: 40px; height: 40px; background-color: rgba(0,0,0,0.05);'"
+                        >
+                          <FileText :size="20" :class="isDarkMode ? 'text-white-50' : 'text-muted'" />
                         </div>
                         <div>
-                          <p class="mb-0 fw-medium text-dark">{{ doc.label }}</p>
-                          <small class="text-muted">{{ doc.file ? 'Uploaded' : 'Not uploaded' }}</small>
+                          <p :class="isDarkMode ? 'mb-0 fw-medium text-white' : 'mb-0 fw-medium text-dark'">{{ doc.label }}</p>
+                          <small :class="isDarkMode ? 'text-white-50' : 'text-muted'">{{ doc.file ? 'Uploaded' : 'Not uploaded' }}</small>
                         </div>
                       </div>
                       <div>
@@ -319,7 +342,8 @@ import {
   LogOut, 
   Wallet,
   Moon,
-  Sun
+  Sun,
+  AlertCircle
 } from 'lucide-vue-next';
 import { useDarkMode } from "@/composables/useDarkMode";
 
@@ -334,13 +358,16 @@ export default {
     LogOut,
     Wallet,
     Moon,
-    Sun
+    Sun,
+    AlertCircle
   },
   setup() {
     const { isDarkMode, toggleDarkMode } = useDarkMode()
     return {
       isDarkMode,
-      toggleDarkMode
+      toggleDarkMode,
+      Moon,
+      Sun
     }
   },
   data() {
@@ -352,13 +379,16 @@ export default {
       modalFile: null,
       customerId: Number(localStorage.getItem("customer_id")) || 1,
       customerName: localStorage.getItem("customer_name") || "Customer",
+      showAccountNumber: false,
+      accountNumberTimer: null,
       navItems: [
         { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
         { id: 'beneficiary', label: 'Beneficiaries', path: '/beneficiary', icon: Users },
         { id: 'transfer', label: 'Transfer Money', path: '/transfer', icon: Send },
         { id: 'history', label: 'Transactions', path: '/history', icon: FileText },
         { id: 'payments', label: 'Payments', path: '/payments', icon: Wallet },
-        { id: 'chatbot', label: 'AI Assistant', path: '/chatbot', icon: MessageSquare }
+        { id: 'chatbot', label: 'AI Assistant', path: '/chatbot', icon: MessageSquare },
+        { id: 'disputes', label: 'Disputes', path: '/disputes', icon: AlertCircle }
       ]
     };
   },
@@ -371,6 +401,23 @@ export default {
         { label: "Photo", file: this.profile.kyc.photo_file },
         { label: "Signature", file: this.profile.kyc.signature_file },
       ];
+    },
+    maskedAccountNumber() {
+      if (!this.profile || !this.profile.account || !this.profile.account.account_number) {
+        return '***';
+      }
+      const accountNumber = this.profile.account.account_number.toString();
+      let displayNumber;
+      
+      if (this.showAccountNumber) {
+        displayNumber = accountNumber;
+      } else {
+        // Return asterisks equal to the number of digits in the account number
+        displayNumber = '*'.repeat(accountNumber.length);
+      }
+      
+      // Add space after every 5 digits
+      return displayNumber.replace(/(.{5})/g, '$1 ').trim();
     }
   },
   methods: {
@@ -409,6 +456,17 @@ export default {
       };
       return classes[status] || "status-not-submitted";
     },
+    formatDateTime(timestamp) {
+      if (!timestamp) return 'N/A';
+      const date = new Date(timestamp);
+      return date.toLocaleString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    },
     async loadProfile() {
       try {
         const id = this.$route.params.customer_id || this.customerId;
@@ -424,6 +482,38 @@ export default {
     openModal(file) {
       this.modalFile = file;
       this.showModal = true;
+    },
+    revealAccountNumber() {
+      // Clear any existing timer
+      if (this.accountNumberTimer) {
+        clearTimeout(this.accountNumberTimer);
+        this.accountNumberTimer = null;
+      }
+      
+      // Show the account number
+      this.showAccountNumber = true;
+      
+      // Set timer to hide after 3 seconds
+      this.accountNumberTimer = setTimeout(() => {
+        this.showAccountNumber = false;
+        this.accountNumberTimer = null;
+      }, 3000);
+    },
+    hideAccountNumber() {
+      // Clear the timer if user moves mouse away before 3 seconds
+      if (this.accountNumberTimer) {
+        clearTimeout(this.accountNumberTimer);
+        this.accountNumberTimer = null;
+      }
+      // Hide the account number immediately when mouse leaves
+      this.showAccountNumber = false;
+    }
+  },
+  beforeUnmount() {
+    // Clean up timer when component is destroyed
+    if (this.accountNumberTimer) {
+      clearTimeout(this.accountNumberTimer);
+      this.accountNumberTimer = null;
     }
   },
   mounted() {

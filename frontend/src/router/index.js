@@ -75,4 +75,10 @@ const router = createRouter({
   routes
 })
 
+// Update document title
+router.beforeEach((to, from, next) => {
+  document.title = 'GIROBANK';
+  next();
+})
+
 export default router

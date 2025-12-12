@@ -1,15 +1,12 @@
 <template>
   <div class="d-flex min-vh-100 font-sans" :class="isDarkMode ? 'bg-dark' : 'bg-light'" :style="isDarkMode ? 'background-color: #0f172a;' : ''">
     <!-- Sidebar -->
-    <div class="sidebar d-flex flex-column shadow-sm" style="width: 280px; z-index: 1000; background-color: #1e293b;">
+    <div class="sidebar d-flex flex-column shadow-sm" style="width: 280px; position: fixed; height: 100vh; overflow-y: auto; z-index: 1000; background-color: #1e293b;">
       <!-- Logo/Header -->
       <div class="p-4 mb-2">
         <div class="d-flex align-items-center gap-3 mb-4">
-          <div class="logo-box bg-primary bg-gradient text-white rounded-3 d-flex align-items-center justify-content-center shadow-sm">
-            <span class="fw-bold fs-4">S</span>
-          </div>
           <div>
-            <h5 class="fw-bold text-white mb-0">Sep Bank</h5>
+            <h5 class="fw-bold text-white mb-0">GIROBANK</h5>
             <small class="text-white-50">Premium Banking</small>
           </div>
         </div>
@@ -81,7 +78,7 @@
     </div>
 
     <!-- Main Content -->
-    <div class="flex-grow-1 overflow-auto">
+    <div class="flex-grow-1 overflow-auto" style="margin-left: 280px;">
       <!-- Top Header -->
       <header 
         class="border-bottom px-4 py-3 d-flex justify-content-between align-items-center sticky-top shadow-sm"
@@ -103,24 +100,31 @@
       </header>
 
       <!-- Notification Dropdown -->
-      <div v-if="showNotifications" class="notification-dropdown position-absolute end-0 me-4 mt-2 bg-white rounded-3 shadow-lg" style="width: 320px; max-height: 400px; overflow-y: auto; z-index: 1001;">
-        <div class="p-3 border-bottom">
-          <h6 class="fw-bold mb-0">Notifications</h6>
+      <div 
+        v-if="showNotifications" 
+        class="notification-dropdown position-absolute end-0 me-4 mt-2 rounded-3 shadow-lg" 
+        :class="isDarkMode ? 'bg-dark' : 'bg-white'"
+        :style="isDarkMode ? 'background-color: #1e293b; border: 1px solid rgba(255,255,255,0.1); width: 320px; max-height: 400px; overflow-y: auto; z-index: 1001;' : 'width: 320px; max-height: 400px; overflow-y: auto; z-index: 1001;'"
+      >
+        <div class="p-3 border-bottom" :style="isDarkMode ? 'border-color: rgba(255,255,255,0.1);' : ''">
+          <h6 :class="isDarkMode ? 'fw-bold mb-0 text-white' : 'fw-bold mb-0'">Notifications</h6>
         </div>
-        <div v-if="notifications.length === 0" class="p-4 text-center text-muted">
+        <div v-if="notifications.length === 0" class="p-4 text-center" :class="isDarkMode ? 'text-white-50' : 'text-muted'">
           No new notifications
         </div>
         <div v-else>
           <div
             v-for="notif in notifications"
             :key="notif.id"
-            class="p-3 border-bottom hover-bg-light cursor-pointer"
+            class="p-3 border-bottom cursor-pointer"
+            :class="isDarkMode ? 'border-secondary' : 'hover-bg-light'"
+            :style="isDarkMode ? 'border-color: rgba(255,255,255,0.1);' : ''"
             @click="markAsRead(notif.id)"
           >
             <div class="d-flex justify-content-between align-items-start">
               <div class="flex-grow-1">
-                <p class="mb-1 fw-semibold" :class="{ 'text-primary': !notif.is_read }">{{ notif.title }}</p>
-                <p class="mb-0 small text-muted">{{ notif.message }}</p>
+                <p class="mb-1 fw-semibold" :class="{ 'text-primary': !notif.is_read, 'text-white': isDarkMode && notif.is_read }">{{ notif.title }}</p>
+                <p class="mb-0 small" :class="isDarkMode ? 'text-white-50' : 'text-muted'">{{ notif.message }}</p>
               </div>
               <button class="btn btn-sm btn-link text-danger p-0" @click.stop="deleteNotification(notif.id)">
                 <X :size="16" />
@@ -130,7 +134,7 @@
         </div>
       </div>
 
-      <div class="p-4 p-lg-5">
+      <div class="p-4 p-lg-5" :style="isDarkMode ? 'background-color: #0f172a;' : ''">
         <!-- Dashboard View -->
         <div v-if="currentView === 'dashboard'" class="row g-4">
           <!-- Left Column -->
@@ -150,7 +154,15 @@
                 <div class="d-flex justify-content-between align-items-end">
                   <div>
                     <p class="mb-1 opacity-75 small">Account Number</p>
-                    <p class="mb-0 font-monospace fs-5">**** **** **** {{ customerId.toString().padStart(4, '0') }}</p>
+                    <p 
+                      class="mb-0 font-monospace fs-5 cursor-pointer" 
+                      @mouseenter="revealAccountNumber"
+                      @mouseleave="hideAccountNumber"
+                      :title="showAccountNumber ? '' : 'Hover to reveal account number'"
+                      style="transition: all 0.3s ease; user-select: none;"
+                    >
+                      {{ maskedAccountNumber }}
+                    </p>
                   </div>
                   <div class="text-end">
                     <p class="mb-0 opacity-75 small">Valid Thru</p>
@@ -164,60 +176,97 @@
             </div>
 
             <!-- Quick Actions -->
-            <h5 class="fw-bold text-dark mb-3">Quick Actions</h5>
+            <h5 :class="isDarkMode ? 'fw-bold text-white mb-3' : 'fw-bold text-dark mb-3'">Quick Actions</h5>
             <div class="row g-3 mb-4">
               <div class="col-6 col-md-3">
-                <button @click="navigate('/transfer')" class="btn btn-white w-100 h-100 p-3 rounded-4 shadow-sm border-0 d-flex flex-column align-items-center justify-content-center gap-2 hover-lift transition-all">
+                <button 
+                  @click="navigate('/transfer')" 
+                  class="btn w-100 h-100 p-3 rounded-4 shadow-sm border-0 d-flex flex-column align-items-center justify-content-center gap-2 hover-lift transition-all"
+                  :class="isDarkMode ? 'bg-dark' : 'btn-white'"
+                  :style="isDarkMode ? 'background-color: #1e293b; border: 1px solid rgba(255,255,255,0.1) !important;' : ''"
+                >
                   <div class="icon-box bg-primary-subtle text-primary rounded-circle p-3 mb-1">
                     <Send :size="24" />
                   </div>
-                  <span class="fw-medium text-dark small">Transfer</span>
+                  <span :class="isDarkMode ? 'fw-medium text-white small' : 'fw-medium text-dark small'">Transfer</span>
                 </button>
               </div>
               <div class="col-6 col-md-3">
-                <button @click="navigate('/beneficiary')" class="btn btn-white w-100 h-100 p-3 rounded-4 shadow-sm border-0 d-flex flex-column align-items-center justify-content-center gap-2 hover-lift transition-all">
+                <button 
+                  @click="navigate('/beneficiary')" 
+                  class="btn w-100 h-100 p-3 rounded-4 shadow-sm border-0 d-flex flex-column align-items-center justify-content-center gap-2 hover-lift transition-all"
+                  :class="isDarkMode ? 'bg-dark' : 'btn-white'"
+                  :style="isDarkMode ? 'background-color: #1e293b; border: 1px solid rgba(255,255,255,0.1) !important;' : ''"
+                >
                   <div class="icon-box bg-success-subtle text-success rounded-circle p-3 mb-1">
                     <Users :size="24" />
                   </div>
-                  <span class="fw-medium text-dark small">Beneficiaries</span>
+                  <span :class="isDarkMode ? 'fw-medium text-white small' : 'fw-medium text-dark small'">Beneficiaries</span>
                 </button>
               </div>
               <div class="col-6 col-md-3">
-                <button @click="navigate('/history')" class="btn btn-white w-100 h-100 p-3 rounded-4 shadow-sm border-0 d-flex flex-column align-items-center justify-content-center gap-2 hover-lift transition-all">
+                <button 
+                  @click="navigate('/history')" 
+                  class="btn w-100 h-100 p-3 rounded-4 shadow-sm border-0 d-flex flex-column align-items-center justify-content-center gap-2 hover-lift transition-all"
+                  :class="isDarkMode ? 'bg-dark' : 'btn-white'"
+                  :style="isDarkMode ? 'background-color: #1e293b; border: 1px solid rgba(255,255,255,0.1) !important;' : ''"
+                >
                   <div class="icon-box bg-warning-subtle text-warning rounded-circle p-3 mb-1">
                     <FileText :size="24" />
                   </div>
-                  <span class="fw-medium text-dark small">History</span>
+                  <span :class="isDarkMode ? 'fw-medium text-white small' : 'fw-medium text-dark small'">History</span>
                 </button>
               </div>
               <div class="col-6 col-md-3">
-                <button @click="navigate('/payments')" class="btn btn-white w-100 h-100 p-3 rounded-4 shadow-sm border-0 d-flex flex-column align-items-center justify-content-center gap-2 hover-lift transition-all">
+                <button 
+                  @click="navigate('/payments')" 
+                  class="btn w-100 h-100 p-3 rounded-4 shadow-sm border-0 d-flex flex-column align-items-center justify-content-center gap-2 hover-lift transition-all"
+                  :class="isDarkMode ? 'bg-dark' : 'btn-white'"
+                  :style="isDarkMode ? 'background-color: #1e293b; border: 1px solid rgba(255,255,255,0.1) !important;' : ''"
+                >
                   <div class="icon-box bg-info-subtle text-info rounded-circle p-3 mb-1">
                     <MessageSquare :size="24" />
                   </div>
-                  <span class="fw-medium text-dark small">Payments</span>
+                  <span :class="isDarkMode ? 'fw-medium text-white small' : 'fw-medium text-dark small'">Payments</span>
                 </button>
               </div>
             </div>
 
             <!-- Recent Transactions -->
-            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
-              <div class="card-header bg-white border-bottom border-light p-4 d-flex justify-content-between align-items-center">
-                <h5 class="fw-bold text-dark mb-0">Recent Transactions</h5>
-                <button class="btn btn-link text-primary text-decoration-none fw-medium p-0" @click="navigate('/history')">View All</button>
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden" :class="isDarkMode ? 'bg-dark' : ''" :style="isDarkMode ? 'background-color: #1e293b; border: 1px solid rgba(255,255,255,0.1) !important;' : ''">
+              <div class="card-header border-bottom p-4 d-flex justify-content-between align-items-center" :class="isDarkMode ? 'bg-dark' : 'bg-white border-light'" :style="isDarkMode ? 'background-color: #1e293b; border-color: rgba(255,255,255,0.1) !important;' : ''">
+                <h5 :class="isDarkMode ? 'fw-bold text-white mb-0' : 'fw-bold text-dark mb-0'">Recent Transactions</h5>
+                <button 
+                  class="btn btn-link text-decoration-none fw-medium p-0" 
+                  :class="isDarkMode ? 'text-white-50' : 'text-primary'"
+                  @click="navigate('/history')"
+                >
+                  View All
+                </button>
               </div>
-              <div class="card-body p-0">
-                <div v-if="transactions.length === 0" class="p-4 text-center text-muted">
+              <div class="card-body p-0" :style="isDarkMode ? 'background-color: #1e293b;' : ''">
+                <div v-if="transactions.length === 0" class="p-4 text-center" :class="isDarkMode ? 'text-white-50' : 'text-muted'">
                   No transactions yet
                 </div>
                 <div v-else class="list-group list-group-flush">
                   <div
                     v-for="transaction in transactions.slice(0, 5)"
                     :key="transaction.id"
-                    class="list-group-item border-light p-3 d-flex align-items-center justify-content-between hover-bg-light transition-all"
+                    class="list-group-item p-3 d-flex align-items-center justify-content-between transition-all"
+                    :class="isDarkMode ? 'border-secondary' : 'border-light hover-bg-light'"
+                    :style="isDarkMode ? 'background-color: #1e293b; border-color: rgba(255,255,255,0.1) !important;' : ''"
                   >
                     <div class="d-flex align-items-center gap-3">
-                      <div :class="['rounded-circle p-2 d-flex align-items-center justify-content-center', transaction.type === 'credit' ? 'bg-success-subtle text-success' : 'bg-light text-secondary']" style="width: 40px; height: 40px;">
+                      <div 
+                        :class="[
+                          'rounded-circle p-2 d-flex align-items-center justify-content-center',
+                          transaction.type === 'credit' 
+                            ? 'bg-success-subtle text-success' 
+                            : (isDarkMode ? 'bg-dark text-white-50' : 'bg-light text-secondary')
+                        ]" 
+                        :style="transaction.type === 'debit' && isDarkMode ? 'background-color: rgba(255,255,255,0.1);' : ''"
+                        style="width: 40px; height: 40px;"
+                      >
                         <ArrowDownLeft v-if="transaction.type === 'credit'" :size="20" />
                         <ArrowUpRight v-else :size="20" />
                       </div>
@@ -226,13 +275,13 @@
                         <small class="text-muted">{{ formatDate(transaction.timestamp) }}</small>
                       </div>  -->
                       <div>
-                        <p class="mb-0 fw-semibold text-dark">{{ transaction.description }}</p>
-                        <small class="text-muted me-2">{{ formatDateCard(transaction.timestamp) }}</small>
-                        <small class="text-muted">{{ formatTimeCard(transaction.timestamp) }}</small>
+                        <p :class="isDarkMode ? 'mb-0 fw-semibold text-white' : 'mb-0 fw-semibold text-dark'">{{ transaction.description }}</p>
+                        <small :class="isDarkMode ? 'text-white-50 me-2' : 'text-muted me-2'">{{ formatDateCard(transaction.timestamp) }}</small>
+                        <small :class="isDarkMode ? 'text-white-50' : 'text-muted'">{{ formatTimeCard(transaction.timestamp) }}</small>
                       </div> 
 
                     </div>
-                    <span :class="['fw-bold', transaction.type === 'debit' ? 'text-dark' : 'text-success']">
+                    <span :class="['fw-bold', transaction.type === 'debit' ? (isDarkMode ? 'text-white' : 'text-dark') : 'text-success']">
                       {{ transaction.type === 'debit' ? '-' : '+' }}₹{{ transaction.amount }}
                     </span>
                   </div>
@@ -266,9 +315,9 @@
                   >
                     <div class="d-flex align-items-center gap-2">
                       <div class="rounded-circle" :style="{ backgroundColor: category.color, width: '10px', height: '10px' }"></div>
-                      <span class="text-dark fw-medium">{{ category.name }}</span>
+                      <span :class="isDarkMode ? 'text-white fw-medium' : 'text-dark fw-medium'">{{ category.name }}</span>
                     </div>
-                    <span class="fw-bold text-dark">{{ category.percentage }}%</span>
+                    <span :class="isDarkMode ? 'fw-bold text-white' : 'fw-bold text-dark'">{{ category.percentage }}%</span>
                   </div>
                 </div>
               </div>
@@ -279,16 +328,21 @@
         <!-- Transfer View -->
         <div v-if="currentView === 'transfer'" class="row g-4">
           <div class="col-lg-6 mx-auto">
-            <div class="card border-0 shadow-sm rounded-4">
-              <div class="card-body p-4">
-                <h5 class="fw-bold mb-4">Transfer Funds</h5>
+            <div class="card border-0 shadow-sm rounded-4" :class="isDarkMode ? 'bg-dark' : ''" :style="isDarkMode ? 'background-color: #1e293b; border: 1px solid rgba(255,255,255,0.1) !important;' : ''">
+              <div class="card-body p-4" :style="isDarkMode ? 'background-color: #1e293b;' : ''">
+                <h5 :class="isDarkMode ? 'fw-bold text-white mb-4' : 'fw-bold mb-4'">Transfer Funds</h5>
                 <div class="mb-3">
-                  <label class="form-label fw-medium">Select Beneficiary</label>
+                  <label :class="isDarkMode ? 'form-label fw-medium text-white' : 'form-label fw-medium'">Select Beneficiary</label>
                     <!-- <select v-model="transfer.beneficiary_account" class="form-select">
                       <option value="">Choose a beneficiary</option>
                       <option v-for="acc in activeBeneficiaryAccounts" :key="acc" :value="acc">{{ acc }}</option>
                     </select> -->
-                    <select v-model="transfer.beneficiary_account" class="form-select">
+                    <select 
+                      v-model="transfer.beneficiary_account" 
+                      class="form-select"
+                      :class="isDarkMode ? 'bg-dark text-white' : ''"
+                      :style="isDarkMode ? 'background-color: #0f172a; color: white;' : ''"
+                    >
                       <option value="">Choose a beneficiary</option>
                       <option v-for="acc in activeBeneficiaryAccounts" :key="acc.account_number" :value="acc.account_number">
                         {{ acc.name }} - {{ acc.account_number }}
@@ -296,12 +350,26 @@
                     </select>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label fw-medium">Amount</label>
-                  <input v-model="transfer.amount" type="number" class="form-control" placeholder="Enter amount">
+                  <label :class="isDarkMode ? 'form-label fw-medium text-white' : 'form-label fw-medium'">Amount</label>
+                  <input 
+                    v-model="transfer.amount" 
+                    type="number" 
+                    class="form-control" 
+                    :class="isDarkMode ? 'bg-dark text-white' : ''"
+                    :style="isDarkMode ? 'background-color: #0f172a; color: white;' : ''"
+                    placeholder="Enter amount"
+                  >
                 </div>
                 <div class="mb-3">
-                  <label class="form-label fw-medium">Remarks (optional)</label>
-                  <input v-model="transfer.remarks" type="text" class="form-control" placeholder="Add a note">
+                  <label :class="isDarkMode ? 'form-label fw-medium text-white' : 'form-label fw-medium'">Remarks (optional)</label>
+                  <input 
+                    v-model="transfer.remarks" 
+                    type="text" 
+                    class="form-control" 
+                    :class="isDarkMode ? 'bg-dark text-white' : ''"
+                    :style="isDarkMode ? 'background-color: #0f172a; color: white;' : ''"
+                    placeholder="Add a note"
+                  >
                 </div>
                 <button @click="transferFunds" class="btn btn-primary w-100 py-2">
                   <Send :size="18" class="me-2" />
@@ -317,18 +385,33 @@
         <!-- History View -->
         <div v-if="currentView === 'history'" class="row g-4">
           <div class="col-12">
-            <div class="card border-0 shadow-sm rounded-4">
-              <div class="card-header bg-white border-bottom border-light p-4 d-flex justify-content-between align-items-center">
-                <h5 class="fw-bold mb-0">Transaction History</h5>
+            <div class="card border-0 shadow-sm rounded-4" :class="isDarkMode ? 'bg-dark' : ''" :style="isDarkMode ? 'background-color: #1e293b; border: 1px solid rgba(255,255,255,0.1) !important;' : ''">
+              <div class="card-header border-bottom p-4 d-flex justify-content-between align-items-center" :class="isDarkMode ? 'bg-dark' : 'bg-white border-light'" :style="isDarkMode ? 'background-color: #1e293b; border-color: rgba(255,255,255,0.1) !important;' : ''">
+                <h5 :class="isDarkMode ? 'fw-bold text-white mb-0' : 'fw-bold mb-0'">Transaction History</h5>
                 <div class="d-flex gap-2">
-                  <button @click="downloadCSV" class="btn btn-outline-primary btn-sm">
-                    <Download :size="16" class="me-1" />
-                    CSV
+                  <button 
+                    @click="downloadCSV" 
+                    class="btn btn-outline-primary btn-sm"
+                    :disabled="isDownloadingCSV"
+                  >
+                    <Loader2 v-if="isDownloadingCSV" :size="16" class="me-1 spinner" />
+                    <i v-else class="bi bi-filetype-csv me-1"></i>
+                    {{ isDownloadingCSV ? 'Downloading...' : 'CSV' }}
                   </button>
                 </div>
               </div>
-              <div class="card-body p-4">
-                <div v-if="transactions.length === 0" class="text-center text-muted py-5">
+              <div class="card-body p-4" :style="isDarkMode ? 'background-color: #1e293b;' : ''">
+                <!-- Success Alert -->
+                <div v-if="downloadSuccessMessage" class="alert alert-success alert-dismissible fade show border-0 rounded-3 mb-3" role="alert">
+                  <div class="d-flex align-items-center gap-2">
+                    <CheckCircle :size="20" class="text-success" />
+                    <div>
+                      <strong>Success!</strong> {{ downloadSuccessMessage }}
+                    </div>
+                  </div>
+                  <button type="button" class="btn-close" @click="downloadSuccessMessage = null" aria-label="Close"></button>
+                </div>
+                <div v-if="transactions.length === 0" class="text-center py-5" :class="isDarkMode ? 'text-white-50' : 'text-muted'">
                   <FileText :size="48" class="mb-3 opacity-25" />
                   <p>No transactions yet</p>
                 </div>
@@ -339,6 +422,7 @@
                         'transaction-card p-4 rounded-4 shadow-sm border-0 d-flex align-items-center justify-content-between',
                         transaction.type === 'credit' ? 'bg-success-light' : 'bg-danger-light'
                       ]"
+                      :style="isDarkMode ? 'background-color: #0f172a; border: 1px solid rgba(255,255,255,0.1) !important;' : ''"
                     >
                       <div class="d-flex align-items-center gap-3 flex-grow-1">
                         <!-- Icon -->
@@ -356,17 +440,17 @@
                         <!-- Transaction Details -->
                         <div class="flex-grow-1">
                           <!-- Description with recipient details -->
-                          <h6 class="mb-1 fw-bold text-dark">
+                          <h6 :class="isDarkMode ? 'mb-1 fw-bold text-white' : 'mb-1 fw-bold text-dark'">
                             {{ getTransactionTitle(transaction) }}
                           </h6>
                           
                           <!-- Remarks (if present) -->
-                          <p v-if="hasRemarks(transaction)" class="mb-1 text-muted small">
+                          <p v-if="hasRemarks(transaction)" :class="isDarkMode ? 'mb-1 text-white-50 small' : 'mb-1 text-muted small'">
                             {{ getRemarks(transaction) }}
                           </p>
                           
                           <!-- Date and Time on same line -->
-                          <div class="d-flex align-items-center gap-3 text-muted small">
+                          <div class="d-flex align-items-center gap-3 small" :class="isDarkMode ? 'text-white-50' : 'text-muted'">
                             <span>{{ formatDateCard(transaction.timestamp) }}</span>
                             <span>•</span>
                             <span>{{ formatTimeCard(transaction.timestamp) }}</span>
@@ -417,7 +501,9 @@ import {
   Wallet,
   Moon,
   Sun,
-  AlertCircle
+  AlertCircle,
+  Loader2,
+  CheckCircle
 } from "lucide-vue-next";
 import { useDarkMode } from "@/composables/useDarkMode";
 
@@ -439,13 +525,17 @@ export default {
     Wallet,
     Moon,
     Sun,
-    AlertCircle
+    AlertCircle,
+    Loader2,
+    CheckCircle
   },
   setup() {
     const { isDarkMode, toggleDarkMode } = useDarkMode()
     return {
       isDarkMode,
-      toggleDarkMode
+      toggleDarkMode,
+      Moon,
+      Sun
     }
   },
   data() {
@@ -473,9 +563,13 @@ export default {
         { id: 'payments', label: 'Payments', path: '/payments', icon: Wallet },
         { id: 'chatbot', label: 'AI Assistant', path: '/chatbot', icon: MessageSquare },
         { id: 'disputes', label: 'Disputes', path: '/disputes', icon: AlertCircle }
-      ]
-      ,
-      spendingCategories: []
+      ],
+      spendingCategories: [],
+      isDownloadingCSV: false,
+      downloadSuccessMessage: null,
+      accountNumber: null,
+      showAccountNumber: false,
+      accountNumberTimer: null
     };
   },
   computed: {
@@ -519,6 +613,23 @@ export default {
         .filter(t => t.type === 'debit')
         .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
       return Math.round(debits);
+    },
+    maskedAccountNumber() {
+      if (!this.accountNumber) {
+        return '**** **** **** ' + this.customerId.toString().padStart(4, '0');
+      }
+      const accountNumberStr = this.accountNumber.toString();
+      let displayNumber;
+      
+      if (this.showAccountNumber) {
+        displayNumber = accountNumberStr;
+      } else {
+        // Return asterisks equal to the number of digits in the account number
+        displayNumber = '*'.repeat(accountNumberStr.length);
+      }
+      
+      // Add space after every 5 digits
+      return displayNumber.replace(/(.{5})/g, '$1 ').trim();
     },
     pieChartStyle() {
       // Handle empty categories
@@ -589,29 +700,31 @@ export default {
     //   return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
     // },
     formatDate(timestamp) {
-  if (!timestamp) return 'N/A';
-
-  // Create a Date object from UTC timestamp
-  const date = new Date(timestamp);
-
-  // Add 5 hours 30 minutes (IST offset)
-  const IST_OFFSET = 5.5 * 60 * 60 * 1000; // in milliseconds
-  const istDate = new Date(date.getTime() + IST_OFFSET);
-
-  // Format the IST date
-  return istDate.toLocaleDateString('en-IN', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric'
-  });
-}
-,
+      if (!timestamp) return 'N/A';
+      const date = new Date(timestamp);
+      return date.toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+    },
     async fetchBalance() {
       try {
         const res = await axios.get(
           `http://127.0.0.1:5000/customer/balance/${this.customerId}`
         );
         this.balance = res.data.balance;
+        // Fetch account number from profile if not already set
+        if (!this.accountNumber) {
+          try {
+            const profileRes = await axios.get(`http://127.0.0.1:5000/customer/profile/${this.customerId}`);
+            if (profileRes.data && profileRes.data.account && profileRes.data.account.account_number) {
+              this.accountNumber = profileRes.data.account.account_number;
+            }
+          } catch (profileErr) {
+            console.error("Error fetching account number:", profileErr);
+          }
+        }
       } catch (err) {
         console.error("Error fetching balance:", err);
       }
@@ -660,6 +773,9 @@ export default {
       }
     },
     async downloadCSV() {
+      this.isDownloadingCSV = true;
+      this.downloadSuccessMessage = null;
+      
       try {
         const res = await axios.get(
           `http://127.0.0.1:5000/customer/transactions/${this.customerId}?format=csv`,
@@ -672,8 +788,28 @@ export default {
         document.body.appendChild(link);
         link.click();
         link.remove();
+        window.URL.revokeObjectURL(url);
+        
+        // Show success message
+        // Note: Browsers don't allow JavaScript to access the actual download path for security reasons
+        // The file is typically saved to the default Downloads folder
+        const defaultDownloadPath = navigator.platform.toLowerCase().includes('win') 
+          ? 'Downloads folder' 
+          : navigator.platform.toLowerCase().includes('mac')
+          ? 'Downloads folder'
+          : 'Downloads directory';
+        
+        this.downloadSuccessMessage = `CSV file downloaded successfully! Check your ${defaultDownloadPath} for 'transactions.csv'`;
+        
+        // Auto-hide success message after 5 seconds
+        setTimeout(() => {
+          this.downloadSuccessMessage = null;
+        }, 5000);
       } catch (err) {
         console.error("Error downloading CSV:", err);
+        alert("Failed to download CSV. Please try again.");
+      } finally {
+        this.isDownloadingCSV = false;
       }
     },
     async downloadPDF() {
@@ -789,19 +925,14 @@ export default {
     // },
 
     formatDateCard(timestamp) {
-  if (!timestamp) return 'N/A';
-
-  const istDate = new Date(timestamp);
-
-  // Format date in DD MMM YY
-  return istDate.toLocaleDateString('en-GB', { 
-    day: '2-digit', 
-    month: 'short', 
-    year: '2-digit',
-    timeZone: 'Asia/Kolkata'
-  });
-}
-,
+      if (!timestamp) return 'N/A';
+      const date = new Date(timestamp);
+      return date.toLocaleDateString('en-GB', { 
+        day: '2-digit', 
+        month: 'short', 
+        year: '2-digit'
+      });
+    },
 
     // formatTimeCard(timestamp) {
     //   if (!timestamp) return 'N/A';
@@ -817,20 +948,14 @@ export default {
     // },
 
     formatTimeCard(timestamp) {
-  if (!timestamp) return 'N/A';
-
-  const istDate = new Date(timestamp);
-
-  // Format time in HH:MM:SS (24-hour)
-  return istDate.toLocaleTimeString('en-GB', { 
-    hour: '2-digit', 
-    minute: '2-digit', 
-    second: '2-digit', 
-    hour12: false,
-    timeZone: 'Asia/Kolkata'
-  });
-}
-,
+      if (!timestamp) return 'N/A';
+      const date = new Date(timestamp);
+      return date.toLocaleTimeString('en-GB', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: false
+      });
+    },
 
     getTransactionTitle(transaction) {
       // Extract the main part before " - " (which typically contains remarks)
@@ -855,6 +980,34 @@ export default {
       }
       return '';
     },
+    revealAccountNumber() {
+      // Only reveal if account number is available
+      if (!this.accountNumber) return;
+      
+      // Clear any existing timer
+      if (this.accountNumberTimer) {
+        clearTimeout(this.accountNumberTimer);
+        this.accountNumberTimer = null;
+      }
+      
+      // Show the account number
+      this.showAccountNumber = true;
+      
+      // Set timer to hide after 3 seconds
+      this.accountNumberTimer = setTimeout(() => {
+        this.showAccountNumber = false;
+        this.accountNumberTimer = null;
+      }, 3000);
+    },
+    hideAccountNumber() {
+      // Clear the timer if user moves mouse away before 3 seconds
+      if (this.accountNumberTimer) {
+        clearTimeout(this.accountNumberTimer);
+        this.accountNumberTimer = null;
+      }
+      // Hide the account number immediately when mouse leaves
+      this.showAccountNumber = false;
+    },
   },
   mounted() {
     this.updateViewFromRoute();
@@ -863,6 +1016,13 @@ export default {
     this.fetchSpendingCategories();
     this.fetchBeneficiaries();
     this.fetchNotifications();
+  },
+  beforeUnmount() {
+    // Clean up timer when component is destroyed
+    if (this.accountNumberTimer) {
+      clearTimeout(this.accountNumberTimer);
+      this.accountNumberTimer = null;
+    }
     
     // Close notifications when clicking outside
     document.addEventListener('click', (e) => {
@@ -870,6 +1030,13 @@ export default {
         this.showNotifications = false;
       }
     });
+  },
+  beforeUnmount() {
+    // Clean up timer when component is destroyed
+    if (this.accountNumberTimer) {
+      clearTimeout(this.accountNumberTimer);
+      this.accountNumberTimer = null;
+    }
   },
   watch: {
     '$route': 'updateViewFromRoute'
@@ -880,7 +1047,7 @@ export default {
 <style scoped>
 /* Custom styles for premium look */
 .font-sans {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 }
 
 .logo-box {
@@ -1098,6 +1265,20 @@ export default {
   }
   to {
     opacity: 1;
+  }
+}
+
+/* Spinner animation for CSV download */
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
 </style>
