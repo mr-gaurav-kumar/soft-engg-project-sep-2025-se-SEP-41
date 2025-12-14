@@ -479,6 +479,36 @@
       </div>
     </div>
 
+    <!-- Time Filter Modal for CSV Download -->
+    <div class="modal fade" id="timeFilterModal" tabindex="-1" aria-labelledby="timeFilterModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" :class="isDarkMode ? 'bg-dark' : ''" :style="isDarkMode ? 'background-color: #1e293b; border: 1px solid rgba(255,255,255,0.1);' : ''">
+          <div class="modal-header border-bottom" :class="isDarkMode ? 'bg-dark border-secondary' : ''" :style="isDarkMode ? 'background-color: #1e293b; border-color: rgba(255,255,255,0.1) !important;' : ''">
+            <h5 class="modal-title" :class="isDarkMode ? 'text-white' : ''" id="timeFilterModalLabel">Select Time Period</h5>
+            <button type="button" class="btn-close" :class="isDarkMode ? 'btn-close-white' : ''" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" :style="isDarkMode ? 'background-color: #1e293b;' : ''">
+            <p :class="isDarkMode ? 'text-white-50 mb-3' : 'text-muted mb-3'">Choose the time period for transaction data:</p>
+            <div class="d-grid gap-2">
+              <button 
+                v-for="option in timeFilterOptions" 
+                :key="option.value"
+                @click="selectTimeFilter(option.value)"
+                class="btn btn-outline-primary text-start"
+                :class="isDarkMode ? 'border-secondary' : ''"
+                :style="isDarkMode ? 'border-color: rgba(255,255,255,0.2); color: white;' : ''"
+              >
+                <div class="d-flex justify-content-between align-items-center">
+                  <span>{{ option.label }}</span>
+                  <i class="bi bi-chevron-right"></i>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -569,7 +599,14 @@ export default {
       downloadSuccessMessage: null,
       accountNumber: null,
       showAccountNumber: false,
-      accountNumberTimer: null
+      accountNumberTimer: null,
+      timeFilterOptions: [
+        { label: 'Last 24 Hours', value: 'last_24h' },
+        { label: 'Last One Week', value: 'last_week' },
+        { label: 'Last One Month', value: 'last_month' },
+        { label: 'Lifetime Data', value: 'lifetime' }
+      ],
+      selectedTimeFilter: 'lifetime'
     };
   },
   computed: {
@@ -772,34 +809,72 @@ export default {
         this.spendingCategories = [];
       }
     },
-    async downloadCSV() {
+    downloadCSV() {
+      // Show modal to select time filter
+      const modalElement = document.getElementById('timeFilterModal');
+      if (modalElement) {
+        // Use Bootstrap from window object (loaded via CDN)
+        const Bootstrap = window.bootstrap || bootstrap;
+        const modal = new Bootstrap.Modal(modalElement);
+        modal.show();
+      }
+    },
+    selectTimeFilter(filterValue) {
+      this.selectedTimeFilter = filterValue;
+      // Close modal
+      const modalElement = document.getElementById('timeFilterModal');
+      if (modalElement) {
+        const Bootstrap = window.bootstrap || bootstrap;
+        const modal = Bootstrap.Modal.getInstance(modalElement);
+        if (modal) {
+          modal.hide();
+        }
+      }
+      // Proceed with download
+      this.performCSVDownload(filterValue);
+    },
+    async performCSVDownload(timeFilter) {
       this.isDownloadingCSV = true;
       this.downloadSuccessMessage = null;
       
       try {
+        // Generate filename based on time filter
+        const filterNames = {
+          'last_24h': 'last_24_hours',
+          'last_week': 'last_week',
+          'last_month': 'last_month',
+          'lifetime': 'lifetime'
+        };
+        const filename = `transactions_${filterNames[timeFilter] || 'lifetime'}.csv`;
+        
         const res = await axios.get(
-          `http://127.0.0.1:5000/customer/transactions/${this.customerId}?format=csv`,
+          `http://127.0.0.1:5000/customer/transactions/${this.customerId}?format=csv&time_filter=${timeFilter}`,
           { responseType: "blob" }
         );
         const url = window.URL.createObjectURL(new Blob([res.data]));
         const link = document.createElement("a");
         link.href = url;
-        link.setAttribute("download", "transactions.csv");
+        link.setAttribute("download", filename);
         document.body.appendChild(link);
         link.click();
         link.remove();
         window.URL.revokeObjectURL(url);
         
         // Show success message
-        // Note: Browsers don't allow JavaScript to access the actual download path for security reasons
-        // The file is typically saved to the default Downloads folder
         const defaultDownloadPath = navigator.platform.toLowerCase().includes('win') 
           ? 'Downloads folder' 
           : navigator.platform.toLowerCase().includes('mac')
           ? 'Downloads folder'
           : 'Downloads directory';
         
-        this.downloadSuccessMessage = `CSV file downloaded successfully! Check your ${defaultDownloadPath} for 'transactions.csv'`;
+        const filterLabels = {
+          'last_24h': 'Last 24 Hours',
+          'last_week': 'Last One Week',
+          'last_month': 'Last One Month',
+          'lifetime': 'Lifetime'
+        };
+        
+        this.downloadSuccessMessage = `CSV file (${filterLabels[timeFilter]}) downloaded successfully! Check your ${defaultDownloadPath} for '${filename}'`;
         
         // Auto-hide success message after 5 seconds
         setTimeout(() => {

@@ -98,6 +98,41 @@ def detect_category(description):
             return cat
     return "others"
 
+def detect_category_from_query(user_message):
+    """Detect which spending category the user is asking about from their query."""
+    message_lower = user_message.lower()
+    
+    # Map query keywords to categories
+    category_keywords_map = {
+        "food": ["food", "restaurant", "dining", "eat", "meal", "swiggy", "zomato", "groceries"],
+        "transport": ["travel", "transport", "transportation", "uber", "ola", "taxi", "cab", "metro", "fuel", "petrol", "diesel", "commute", "traveling"],
+        "shopping": ["shop", "shopping", "purchase", "buy", "amazon", "flipkart", "mall", "store"],
+        "bills": ["bill", "bills", "utility", "utilities", "electricity", "water", "gas", "internet", "phone"],
+        "others": ["other", "others", "miscellaneous", "misc"]
+    }
+    
+    # Check for category mentions in the query
+    for category, keywords in category_keywords_map.items():
+        if any(keyword in message_lower for keyword in keywords):
+            return category
+    
+    return None  # No specific category detected
+
+def is_spending_advice_query(user_message):
+    """Detect if the user is asking for spending advice or coaching."""
+    message_lower = user_message.lower()
+    
+    # Keywords that indicate spending advice requests
+    advice_keywords = [
+        "advice", "advise", "tip", "tips", "suggestion", "suggestions",
+        "coach", "coaching", "help me save", "how to save", "save money",
+        "spending advice", "financial advice", "budget", "budgeting",
+        "reduce spending", "cut costs", "spending tips", "money tips",
+        "how can i", "what should i", "recommend", "recommendation"
+    ]
+    
+    return any(keyword in message_lower for keyword in advice_keywords)
+
 ################################# Generate OTP Function #####################################
 
 def generate_otp():
@@ -464,16 +499,29 @@ def mini_statement(customer_id):
 @app.route('/customer/transactions/<int:customer_id>', methods=['GET'])
 def get_transactions(customer_id):
     export_format = request.args.get('format', 'json')
+    time_filter = request.args.get('time_filter', 'lifetime')  # last_24h, last_week, last_month, lifetime
+    
     account = Account.query.filter_by(customer_id=customer_id).first()
     if not account:
         return jsonify({'error': 'Account not found'}), 404
 
-    txns = (
-        Transaction.query
-        .filter_by(account_id=account.id)
-        .order_by(Transaction.timestamp.desc())
-        .all()
-    )
+    # Base query
+    query = Transaction.query.filter_by(account_id=account.id)
+    
+    # Apply time filter
+    now = datetime.utcnow()
+    if time_filter == 'last_24h':
+        cutoff_time = now - timedelta(hours=24)
+        query = query.filter(Transaction.timestamp >= cutoff_time)
+    elif time_filter == 'last_week':
+        cutoff_time = now - timedelta(days=7)
+        query = query.filter(Transaction.timestamp >= cutoff_time)
+    elif time_filter == 'last_month':
+        cutoff_time = now - timedelta(days=30)
+        query = query.filter(Transaction.timestamp >= cutoff_time)
+    # 'lifetime' - no filter, get all transactions
+    
+    txns = query.order_by(Transaction.timestamp.desc()).all()
 
     if export_format == 'csv':
         output = io.StringIO()
@@ -482,9 +530,19 @@ def get_transactions(customer_id):
         for t in txns:
             writer.writerow([t.id, t.transaction_type, t.amount, format_datetime_ist(t.timestamp), t.description])
         output.seek(0)
+        
+        # Generate filename based on time filter
+        filter_names = {
+            'last_24h': 'transactions_last_24_hours',
+            'last_week': 'transactions_last_week',
+            'last_month': 'transactions_last_month',
+            'lifetime': 'transactions_lifetime'
+        }
+        filename = f"{filter_names.get(time_filter, 'transactions_lifetime')}.csv"
+        
         return send_file(io.BytesIO(output.getvalue().encode()),
                          as_attachment=True,
-                         download_name="transactions.csv",
+                         download_name=filename,
                          mimetype="text/csv")
 
     elif export_format == 'pdf':
@@ -1454,22 +1512,70 @@ def reject_kyc(kyc_id):
     data = request.get_json(silent=True) or {}
     comment = data.get("comment") or request.form.get("comment", "")
 
+    customer = Customer.query.get(kyc.customer_id)
+    customer_email = customer.email if customer else None
+    customer_name = customer.full_name if customer else "Customer"
+
+    # Update KYC status
     kyc.status = "rejected"
     kyc.reviewed_at = datetime.utcnow()
     kyc.reviewer_comment = comment
 
+    # Delete the customer and related data
+    if customer:
+        # Delete related records first (to avoid foreign key constraints)
+        # Delete account
+        account = Account.query.filter_by(customer_id=customer.id).first()
+        if account:
+            # Delete transactions
+            Transaction.query.filter_by(account_id=account.id).delete()
+            # Delete bill payments
+            BillPayment.query.filter_by(account_id=account.id).delete()
+            db.session.delete(account)
+        
+        # Delete beneficiaries
+        Beneficiary.query.filter_by(customer_id=customer.id).delete()
+        
+        # Delete spending categories
+        SpendingCategory.query.filter_by(customer_id=customer.id).delete()
+        
+        # Delete virtual cards
+        VirtualCard.query.filter_by(customer_id=customer.id).delete()
+        
+        # Delete OTP verifications
+        OTPVerification.query.filter_by(customer_id=customer.id).delete()
+        
+        # Delete notifications
+        Notification.query.filter_by(user_id=customer.id).delete()
+        
+        # Delete issues
+        Issue.query.filter_by(customer_id=customer.id).delete()
+        
+        # Delete tasks
+        Task.query.filter_by(customer_id=customer.id).delete()
+        
+        # Delete all KYC records for this customer
+        KYC.query.filter_by(customer_id=customer.id).delete()
+        
+        # Finally delete the customer
+        db.session.delete(customer)
+    
     db.session.commit()
 
-    customer = Customer.query.get(kyc.customer_id)
-    send_email(
-        customer.email,
-        "KYC Rejected",
-        f"Dear {customer.full_name},\n\nYour KYC has been rejected.\n"
-        f"Reason: {comment if comment else 'Not specified'}\n"
-        f"Please resubmit your KYC with correct details."
-    )
+    # Send email notification if customer email exists
+    if customer_email:
+        try:
+            send_email(
+                customer_email,
+                "KYC Rejected - Account Deleted",
+                f"Dear {customer_name},\n\nYour KYC has been rejected and your account has been deleted.\n"
+                f"Reason: {comment if comment else 'Not specified'}\n"
+                f"If you wish to use our banking services, please register again with correct KYC documents."
+            )
+        except Exception as e:
+            print(f"Error sending rejection email: {str(e)}")
 
-    return jsonify({"message": "KYC Rejected"}), 200
+    return jsonify({"message": "KYC Rejected and Customer Deleted"}), 200
 
 ################################# Docuemnts Route #####################################
 
@@ -1971,12 +2077,34 @@ def chat_bot():
     user_message = data.get('message', '')
     user_id = data.get('user_id') 
     
+    # Detect if user is asking about a specific category
+    requested_category = detect_category_from_query(user_message)
+    
+    # Detect if user is asking for spending advice
+    is_advice_query = is_spending_advice_query(user_message)
+    
     # 1. Fetch Context (Balance + Spending Habits + Account Details)
     context_data = "User is a guest (No ID provided)."
+    coach_advice = None
     
     if user_id:
         account = Account.query.filter_by(customer_id=user_id).first()
         customer = Customer.query.get(user_id)
+        
+        # Get spending coach advice if it's an advice query
+        if is_advice_query and account:
+            try:
+                # Get recent debits (same as spending_coach endpoint)
+                txns = Transaction.query.filter_by(account_id=account.id)\
+                       .filter(Transaction.transaction_type == 'debit')\
+                       .order_by(Transaction.timestamp.desc()).limit(15).all()
+                
+                if txns:
+                    txn_data = [{"desc": t.description, "amount": t.amount} for t in txns]
+                    coach_advice = ai.spending_tips(txn_data)
+            except Exception as e:
+                print(f"Error getting spending coach advice: {str(e)}")
+                coach_advice = None
         
         if account and customer:
             # A. Basic Account Details
@@ -1994,16 +2122,112 @@ def chat_bot():
                    .filter(Transaction.transaction_type == 'debit')\
                    .order_by(Transaction.timestamp.desc()).limit(30).all()
             
-            spending_text = "No recent transactions."
-            if txns:
-                spending_text = "Recent Transactions: " + ", ".join([f"{t.description} (Rs. {t.amount})" for t in txns])
+            # If specific category requested, filter transactions for that category
+            if requested_category:
+                category_txns = [t for t in txns if detect_category(t.description).lower() == requested_category.lower()]
+                if category_txns:
+                    spending_text = f"Recent {requested_category.capitalize()} Transactions: " + ", ".join([f"{t.description} (Rs. {t.amount})" for t in category_txns])
+                else:
+                    spending_text = f"No recent {requested_category} transactions found."
+            else:
+                spending_text = "No recent transactions."
+                if txns:
+                    spending_text = "Recent Transactions: " + ", ".join([f"{t.description} (Rs. {t.amount})" for t in txns])
             
-            # Combine everything into one block for the AI (truncated for speed)
-            context_data = f"{account_info}\n\n{spending_text}"
+            # C. Get Beneficiaries List (only if not category-specific query)
+            beneficiaries_text = ""
+            if not requested_category:
+                beneficiaries = Beneficiary.query.filter_by(customer_id=user_id).all()
+                if beneficiaries:
+                    beneficiary_list = []
+                    for i, ben in enumerate(beneficiaries, 1):
+                        status = "Verified" if ben.verified else "Pending Verification"
+                        beneficiary_list.append(
+                            f"{i}. {ben.name} - Account: {ben.account_number}, "
+                            f"Bank: {ben.bank_name}, IFSC: {ben.ifsc_code}, "
+                            f"Status: {status}"
+                        )
+                    beneficiaries_text = "\n\nBeneficiaries:\n" + "\n".join(beneficiary_list)
+            
+            # D. Get Spending Categories
+            spending_categories = SpendingCategory.query.filter_by(customer_id=user_id).all()
+            
+            if requested_category:
+                # Focus on the specific category requested (case-insensitive matching)
+                category_data = next((cat for cat in spending_categories if cat.category_name.lower() == requested_category.lower()), None)
+                if category_data:
+                    total_spent = sum(cat.spent_amount for cat in spending_categories)
+                    percentage = (category_data.spent_amount / total_spent * 100) if total_spent > 0 else 0
+                    budget_info = f"\nBudget Limit: Rs. {category_data.budget_limit}" if category_data.budget_limit and category_data.budget_limit > 0 else ""
+                    remaining = f"\nRemaining Budget: Rs. {category_data.budget_limit - category_data.spent_amount:.2f}" if category_data.budget_limit and category_data.budget_limit > 0 else ""
+                    categories_text = (
+                        f"\n\n{requested_category.capitalize()} Category Details:\n"
+                        f"Total Spent: Rs. {category_data.spent_amount:.2f}\n"
+                        f"Percentage of Total Spending: {percentage:.1f}%{budget_info}{remaining}"
+                    )
+                else:
+                    categories_text = f"\n\n{requested_category.capitalize()} Category: No spending tracked in this category yet."
+            else:
+                # Show all categories
+                categories_text = "\n\nNo spending categories tracked yet."
+                if spending_categories:
+                    total_spent = sum(cat.spent_amount for cat in spending_categories)
+                    category_list = []
+                    for cat in sorted(spending_categories, key=lambda x: x.spent_amount, reverse=True):
+                        percentage = (cat.spent_amount / total_spent * 100) if total_spent > 0 else 0
+                        budget_info = f", Budget: Rs. {cat.budget_limit}" if cat.budget_limit and cat.budget_limit > 0 else ""
+                        remaining = f", Remaining: Rs. {cat.budget_limit - cat.spent_amount}" if cat.budget_limit and cat.budget_limit > 0 else ""
+                        category_list.append(
+                            f"- {cat.category_name.capitalize()}: Rs. {cat.spent_amount:.2f} "
+                            f"({percentage:.1f}% of total){budget_info}{remaining}"
+                        )
+                    categories_text = f"\n\nSpending by Category (Total: Rs. {total_spent:.2f}):\n" + "\n".join(category_list)
+            
+            # E. Add Spending Coach Advice if available
+            coach_text = ""
+            if coach_advice:
+                coach_text = f"\n\nSpending Coach Analysis:\n{coach_advice}"
+            
+            # Combine everything into one block for the AI
+            if requested_category:
+                # Focused context for category-specific queries
+                context_data = (
+                    f"{account_info}\n\n"
+                    f"FOCUS: The user is asking specifically about {requested_category} spending. "
+                    f"Provide detailed, actionable advice ONLY for the {requested_category} category. "
+                    f"Do not discuss other categories unless directly relevant.\n\n"
+                    f"{spending_text}{categories_text}{coach_text}"
+                )
+            else:
+                # General context for non-category queries
+                context_data = f"{account_info}\n\n{spending_text}{beneficiaries_text}{categories_text}{coach_text}"
 
     # 2. Get AI Response
     try:
-        reply = ai.general_chat(user_message, context_data)
+        if requested_category:
+            # Enhanced prompt for category-specific queries
+            enhanced_message = (
+                f"User Query: {user_message}\n\n"
+                f"IMPORTANT: The user is asking specifically about {requested_category} spending. "
+                f"Provide focused, actionable advice ONLY for the {requested_category} category. "
+                f"Analyze the {requested_category} transactions and spending data provided. "
+                f"Do not discuss other categories unless the user explicitly asks about them. "
+                f"Give specific tips and recommendations tailored to {requested_category} spending patterns."
+            )
+            if coach_advice:
+                enhanced_message += f"\n\nUse the Spending Coach Analysis provided in the context to enhance your response with specific, actionable advice."
+            reply = ai.general_chat(enhanced_message, context_data)
+        elif is_advice_query and coach_advice:
+            # Enhanced prompt for spending advice queries
+            enhanced_message = (
+                f"User Query: {user_message}\n\n"
+                f"The user is asking for spending advice. Use the Spending Coach Analysis provided in the context "
+                f"to give personalized, actionable financial advice. Reference specific transactions and spending patterns. "
+                f"Provide practical tips that the user can implement immediately."
+            )
+            reply = ai.general_chat(enhanced_message, context_data)
+        else:
+            reply = ai.general_chat(user_message, context_data)
         response = jsonify({"response": reply})
         return response, 200
     except Exception as e:

@@ -15,6 +15,7 @@
         <v-col cols="8">
           <v-text-field
             v-model="otp"
+            @input="otp = otp.replace(/\D/g, '').slice(0, 6)"
             label="Transaction OTP"
             maxlength="6"
             hint="Enter 6-digit OTP sent to your email"
@@ -131,6 +132,7 @@ export default {
   }
 };
 </script>
+
 
 
 

@@ -8,9 +8,13 @@
           <v-col cols="12" md="6">
             <v-text-field
               v-model="otp"
+              @input="otp = otp.replace(/\D/g, '').slice(0, 6)"
               label="Enter OTP"
               outlined
               required
+              maxlength="6"
+              hint="Enter 6-digit OTP"
+              persistent-hint
             />
           </v-col>
 

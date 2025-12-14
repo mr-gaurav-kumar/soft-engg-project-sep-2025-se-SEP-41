@@ -138,6 +138,7 @@
                     <label :class="isDarkMode ? 'form-label small text-white-50 fw-bold' : 'form-label small text-muted fw-bold'">Account Number</label>
                     <input 
                       v-model="beneficiary.account_number" 
+                      @input="beneficiary.account_number = beneficiary.account_number.replace(/\D/g, '')"
                       type="text" 
                       class="form-control border-0 py-2" 
                       :class="isDarkMode ? 'bg-dark text-white' : 'bg-light'"
@@ -233,7 +234,7 @@
           </div>
           <div class="modal-body p-4">
             <p class="text-muted small mb-4">An OTP has been sent to your registered email. Please enter it below to verify this beneficiary.</p>
-            <input v-model="otp" type="text" class="form-control form-control-lg text-center letter-spacing-2" placeholder="Enter 6-digit OTP" maxlength="6">
+            <input v-model="otp" @input="otp = otp.replace(/\D/g, '').slice(0, 6)" type="text" class="form-control form-control-lg text-center letter-spacing-2" placeholder="Enter 6-digit OTP" maxlength="6">
           </div>
           <div class="modal-footer border-0 pt-0 px-4 pb-4">
             <button type="button" class="btn btn-light" @click="showOtpDialog = false">Cancel</button>

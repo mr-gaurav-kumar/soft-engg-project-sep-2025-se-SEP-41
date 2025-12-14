@@ -28,6 +28,7 @@
                 <input 
                   type="text" 
                   v-model="otp" 
+                  @input="otp = otp.replace(/\D/g, '').slice(0, 6)"
                   class="form-control form-control-lg border-2 text-center fw-bold"
                   placeholder="000000"
                   maxlength="6"

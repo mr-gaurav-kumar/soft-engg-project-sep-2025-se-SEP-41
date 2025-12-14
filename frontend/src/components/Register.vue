@@ -62,8 +62,10 @@
                   <input 
                     type="tel" 
                     v-model="form.phone" 
+                    @input="form.phone = form.phone.replace(/\D/g, '').slice(0, 15)"
                     class="form-control form-control-lg border-2"
                     placeholder="Enter your phone number"
+                    maxlength="15"
                   />
                 </div>
                 <div class="mb-3">

@@ -42,9 +42,12 @@
                   <input 
                     type="text" 
                     v-model="form.account_number" 
+                    @input="form.account_number = form.account_number.replace(/\D/g, '').slice(0, 15)"
                     class="form-control form-control-lg border-2"
                     placeholder="Enter your account number"
+                    maxlength="15"
                   />
+                  <small v-if="form.account_number && form.account_number.length !== 15" class="text-danger">Account number must be 15 digits</small>
                 </div>
                 <div class="mb-4">
                   <label class="form-label fw-medium text-secondary">Login Password</label>
@@ -137,7 +140,7 @@ const loading = ref(false);
 const isFormValid = computed(() => {
   if (!form.value.role) return false;
   if (form.value.role === 'customer') {
-    return form.value.account_number && form.value.password;
+    return form.value.account_number && form.value.account_number.length === 15 && form.value.password;
   } else {
     return form.value.email && form.value.password;
   }
