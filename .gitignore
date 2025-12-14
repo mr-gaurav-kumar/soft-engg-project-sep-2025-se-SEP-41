@@ -1,0 +1,13 @@
+backend/__pycache__/
+backend/myenv/
+backend/venv/
+backend/.env
+.rar
+
+backend/instance/banking.db
+backend_project
+frontend-1
+App.py
+backend/models
+final_project
+old_working
